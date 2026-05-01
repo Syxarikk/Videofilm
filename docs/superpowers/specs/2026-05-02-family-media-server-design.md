@@ -80,7 +80,7 @@
                                 │
                                 ▼
                   ┌───────────────────────────┐
-                  │ /mnt/storage/downloads/   │  ← скачанные файлы
+                  │ /srv/Общее/downloads/     │  ← скачанные файлы
                   └──────────┬────────────────┘     (1 ТБ data-диск)
                              │ при просмотре
                              ▼
@@ -112,7 +112,7 @@
 
 - **Ответственность:** скачивание торрентов, статус (прогресс, скорость), удаление с файлами.
 - **Интерфейс:** HTTP API на `127.0.0.1:8080` (логин/пароль из `.env`).
-- **Хранение:** `/mnt/storage/downloads/`.
+- **Хранение:** `/srv/Общее/downloads/` (1 ТБ data-диск, путь конфигурируется в `.env`).
 - **Сервис:** `qbittorrent-nox.service`.
 - **Почему именно qBittorrent:** зрелый, документированный API, веб-морда для отладки, не нужно писать торрент-логику самим. Альтернатива (`libtorrent` напрямую из Python) — больше работы и багов в нашем коде, ноль преимуществ для наших масштабов.
 
@@ -188,7 +188,7 @@ watch_progress  user_id, media_id, position_seconds, updated_at
 1. GET `/add-torrent` → форма ввода magnet.
 2. POST `/api/torrents` с magnet → FastAPI:
    - Валидирует magnet регуляркой (`magnet:?xt=urn:btih:[a-fA-F0-9]+...`).
-   - Вызывает qBittorrent API: `POST /api/v2/torrents/add` с `urls=<magnet>` и `savepath=/mnt/storage/downloads/`.
+   - Вызывает qBittorrent API: `POST /api/v2/torrents/add` с `urls=<magnet>` и `savepath=/srv/Общее/downloads/`.
 3. Редирект на `/downloads`.
 4. На `/downloads` HTMX-фрагмент опрашивает `/api/torrents/status` каждые 2 секунды → выводит таблицу: название, прогресс, скорость, ETA.
 5. Фоновая задача FastAPI каждые 10 сек проверяет qBittorrent на завершённые торренты:
@@ -314,11 +314,17 @@ watch_progress  user_id, media_id, position_seconds, updated_at
 /var/lib/mediasrv/hls/                ← временные HLS-сегменты (system)
 /var/log/mediasrv/                    ← логи (system, logrotate)
 /etc/caddy/Caddyfile                  ← конфиг Caddy
-/mnt/storage/downloads/               ← скачанные медиа (1 ТБ data-диск)
-/mnt/storage/backups/                 ← бэкапы app.db (1 ТБ data-диск)
+/srv/Общее/downloads/                 ← скачанные медиа (1 ТБ data-диск)
+/srv/Общее/backups/                   ← бэкапы app.db (1 ТБ data-диск)
 ```
 
 Под приложением — пользователь `mediasrv` (не root, без shell).
+
+**Замечание про путь `/srv/Общее/`:** имя содержит кириллицу — это технически работает на Ubuntu с UTF-8 локалью, но требует аккуратности в коде:
+- Все вызовы shell/ffmpeg оборачиваем в правильное экранирование (не `$VAR`, а `"$VAR"`).
+- Пути в Python используем через `pathlib.Path` (он сам корректно работает с UTF-8).
+- В `.env` путь хранится как UTF-8 строка; Locale на сервере должна быть `C.UTF-8` или `ru_RU.UTF-8` (проверим в install.sh).
+- Если в будущем захочется подстраховаться — установка может опционально создать ASCII-симлинк `/srv/shared → /srv/Общее` и использовать его в скриптах. По умолчанию не делаем — лишняя сущность.
 
 ### 9.2 systemd-сервисы
 
@@ -330,7 +336,7 @@ watch_progress  user_id, media_id, position_seconds, updated_at
 
 1. `apt install caddy qbittorrent-nox ffmpeg python3.11 python3.11-venv fail2ban git`.
 2. Создание пользователя `mediasrv` и директорий.
-3. Запрос пути к 1 ТБ диску (по умолчанию `/mnt/storage`); проверка, что смонтирован.
+3. Запрос пути к корню data-диска (по умолчанию `/srv/Общее`); проверка, что путь существует и записываем; при необходимости создаются подпапки `downloads/` и `backups/`.
 4. Клонирование репо в `/opt/mediasrv/`, `pip install` в venv.
 5. Генерация `.env` со случайными секретами.
 6. Создание первого админа (запрос username + временный пароль в терминале).
@@ -345,9 +351,9 @@ watch_progress  user_id, media_id, position_seconds, updated_at
 
 ### 9.5 Бэкапы
 
-- `app.db` → cron ежедневно в `/mnt/storage/backups/app-YYYY-MM-DD.db`, ротация 30 копий.
+- `app.db` → cron ежедневно в `/srv/Общее/backups/app-YYYY-MM-DD.db`, ротация 30 копий.
 - `.env` пользователь сохраняет себе сразу после установки (там секреты).
-- `/mnt/storage/downloads/` — **не бэкапим** (большие, в крайнем случае перекачаются).
+- `/srv/Общее/downloads/` — **не бэкапим** (большие, в крайнем случае перекачаются).
 
 ### 9.6 Логи и мониторинг
 
