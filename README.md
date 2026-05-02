@@ -43,6 +43,10 @@ pytest tests/integration -v            # только integration
 
 См. `docs/superpowers/specs/2026-05-02-family-media-server-design.md` (раздел §11).
 
+## Production deployment
+
+См. **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — пошаговое руководство по установке на Ubuntu, настройке HTTPS, fail2ban, бэкапов, Tailscale для SSH.
+
 ## Что дальше
 
 - План 2 — торренты, библиотека, стриминг, скачивание.

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Здоровье сервера{% endblock %}
+{% block content %}
+<h1>Здоровье сервера</h1>
+
+<h2>Диск</h2>
+{% if disk_root.error %}
+  <p class="error">Ошибка: {{ disk_root.error }}</p>
+{% else %}
+  <p>
+    Свободно: <strong>{{ disk_root.free_gb }} ГБ</strong> из {{ disk_root.total_gb }} ГБ
+    (занято {{ disk_root.percent_used }}%)
+  </p>
+{% endif %}
+
+<h2>qBittorrent</h2>
+{% if qb.reachable %}
+  <p>✅ Доступен. Активных торрентов: <strong>{{ qb.active_torrents }}</strong></p>
+{% else %}
+  <p class="error">❌ Не отвечает: {{ qb.error }}</p>
+{% endif %}
+
+<h2>Активные стримы (ffmpeg)</h2>
+{% if not streams %}
+  <p>Нет активных стримов.</p>
+{% else %}
+<table>
+  <thead><tr><th>media_id</th><th>user_id</th><th>work_dir</th><th>живой?</th></tr></thead>
+  <tbody>
+    {% for s in streams %}
+    <tr>
+      <td>{{ s.media_id }}</td>
+      <td>{{ s.user_id }}</td>
+      <td><code>{{ s.work_dir }}</code></td>
+      <td>{{ "да" if s.alive else "нет" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<p><a href="/admin/users">← Пользователи</a></p>
+{% endblock %}

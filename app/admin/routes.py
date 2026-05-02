@@ -1,5 +1,6 @@
 import re
 import secrets
+import shutil
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -10,14 +11,16 @@ from sqlalchemy.orm import Session
 from app.auth.deps import require_admin
 from app.auth.passwords import hash_password
 from app.csrf import verify_csrf
-from app.deps import get_db, render
+from app.deps import get_db, get_qbittorrent_client, render
 from app.models import User
+from app.streaming.stream_registry import get_registry
+from app.torrents.client import QBittorrentClient, QBittorrentError
 
 router = APIRouter(prefix="/admin")
 
 
 @router.get("/users", response_class=HTMLResponse)
-async def list_users(
+def list_users(
     request: Request,
     admin: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
@@ -34,7 +37,7 @@ USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
 
 
 @router.post("/users", response_class=HTMLResponse)
-async def create_user(
+def create_user(
     request: Request,
     username: Annotated[str, Form()],
     admin: Annotated[User, Depends(require_admin)],
@@ -100,7 +103,7 @@ async def create_user(
 
 
 @router.post("/users/{user_id}/delete")
-async def delete_user(
+def delete_user(
     user_id: int,
     admin: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
@@ -114,3 +117,46 @@ async def delete_user(
     db.delete(target)
     db.commit()
     return RedirectResponse("/admin/users", status_code=303)
+
+
+@router.get("/health", response_class=HTMLResponse)
+def health_page(
+    request: Request,
+    admin: Annotated[User, Depends(require_admin)],
+    qb: Annotated[QBittorrentClient, Depends(get_qbittorrent_client)],
+):
+    # Диск
+    try:
+        d_root = shutil.disk_usage("/")
+        disk_root = {
+            "free_gb": round(d_root.free / (1024 ** 3), 1),
+            "total_gb": round(d_root.total / (1024 ** 3), 1),
+            "percent_used": round((1 - d_root.free / d_root.total) * 100, 1),
+        }
+    except Exception as e:
+        disk_root = {"error": str(e)}
+
+    # qBittorrent
+    try:
+        torrents = qb.list_torrents()
+        qb_status = {"reachable": True, "active_torrents": len(torrents)}
+    except QBittorrentError as e:
+        qb_status = {"reachable": False, "error": str(e)}
+
+    # Активные стримы
+    streams = []
+    for h in get_registry().all_streams():
+        streams.append({
+            "media_id": h.media_id, "user_id": h.user_id,
+            "work_dir": h.work_dir,
+            "alive": h.process is not None and (
+                h.process.poll() is None if hasattr(h.process, "poll") else False
+            ),
+        })
+
+    return render(request, "admin_health.html", {
+        "user": admin,
+        "disk_root": disk_root,
+        "qb": qb_status,
+        "streams": streams,
+    })

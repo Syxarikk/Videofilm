@@ -1,3 +1,4 @@
+import logging
 import shutil
 from typing import Annotated
 
@@ -14,11 +15,13 @@ from app.streaming.ffmpeg_runner import kill as kill_ffmpeg
 from app.streaming.stream_registry import get_registry
 from app.torrents.client import QBittorrentClient, QBittorrentError
 
+log = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
 @router.get("/library", response_class=HTMLResponse)
-async def library_page(
+def library_page(
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -28,7 +31,7 @@ async def library_page(
 
 
 @router.get("/media/{media_id}", response_class=HTMLResponse)
-async def media_page(
+def media_page(
     media_id: int,
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
@@ -41,7 +44,7 @@ async def media_page(
 
 
 @router.post("/api/media/{media_id}/delete")
-async def delete_media(
+def delete_media(
     media_id: int,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -63,9 +66,12 @@ async def delete_media(
     # 2. Сказать qBittorrent удалить торрент с файлами
     try:
         qb.delete_torrent(item.torrent_hash, delete_files=True)
-    except QBittorrentError:
+    except QBittorrentError as e:
         # qBittorrent упал — продолжаем; файлы можно потом вычистить вручную
-        pass
+        log.warning(
+            "delete_media: qBittorrent unreachable for torrent %s, files orphaned: %s",
+            item.torrent_hash, e,
+        )
 
     # 3. Удалить из БД (CASCADE снесёт watch_progress)
     db.delete(item)

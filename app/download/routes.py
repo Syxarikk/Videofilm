@@ -34,7 +34,7 @@ def _parse_range(header: str, file_size: int) -> tuple[int, int] | None:
 
 
 @api_router.get("/{media_id}")
-async def download(
+def download(
     media_id: int,
     request: Request,
     user: Annotated[User, Depends(get_current_user)],

@@ -1,0 +1,32 @@
+[Unit]
+Description=MediaServer (FastAPI + uvicorn)
+After=network.target qbittorrent-nox.service
+Wants=qbittorrent-nox.service
+
+[Service]
+Type=simple
+User=mediasrv
+Group=mediasrv
+WorkingDirectory=/opt/mediasrv
+EnvironmentFile=/opt/mediasrv/.env
+ExecStart=/opt/mediasrv/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/opt/mediasrv {{MEDIA_ROOT}} /var/lib/mediasrv /var/log/mediasrv
+
+# Лимиты ресурсов (медиа-сервер не должен сожрать всю RAM)
+MemoryHigh=4G
+MemoryMax=6G
+
+[Install]
+WantedBy=multi-user.target

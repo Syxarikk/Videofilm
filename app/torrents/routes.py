@@ -19,7 +19,7 @@ _MAGNET_RE = re.compile(r"^magnet:\?xt=urn:btih:[a-fA-F0-9]{32,64}", re.IGNORECA
 
 
 @api_router.post("")
-async def add_torrent(
+def add_torrent(
     magnet: Annotated[str, Form()],
     user: Annotated[User, Depends(get_current_user)],
     qb: Annotated[QBittorrentClient, Depends(get_qbittorrent_client)],
@@ -56,7 +56,7 @@ def _format_eta(seconds: int) -> str:
 
 
 @api_router.get("/status")
-async def torrents_status(
+def torrents_status(
     user: Annotated[User, Depends(get_current_user)],
     qb: Annotated[QBittorrentClient, Depends(get_qbittorrent_client)],
 ):
@@ -79,7 +79,7 @@ async def torrents_status(
 
 
 @router.get("/add-torrent", response_class=HTMLResponse)
-async def add_torrent_page(
+def add_torrent_page(
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
 ):
@@ -87,7 +87,7 @@ async def add_torrent_page(
 
 
 @router.get("/downloads", response_class=HTMLResponse)
-async def downloads_page(
+def downloads_page(
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
 ):

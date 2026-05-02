@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_current_user
+from app.config import get_settings
 from app.deps import get_db
 from app.models import MediaItem, User, WatchProgress
 from app.streaming.ffmpeg_runner import HlsParams, kill, start_hls, wait_for_first_segment
@@ -30,7 +31,12 @@ def _ensure_stream(media: MediaItem, user_id: int) -> StreamHandle:
     if existing is not None:
         reg.touch(media.id, user_id)
         return existing
-    work_dir = Path(tempfile.mkdtemp(prefix=f"hls_m{media.id}_u{user_id}_"))
+    settings = get_settings()
+    Path(settings.hls_work_root).mkdir(parents=True, exist_ok=True)
+    work_dir = Path(tempfile.mkdtemp(
+        prefix=f"hls_m{media.id}_u{user_id}_",
+        dir=settings.hls_work_root,
+    ))
     proc = start_hls(HlsParams(source=media.file_path, work_dir=str(work_dir), seek_seconds=0.0))
     handle = StreamHandle(media_id=media.id, user_id=user_id, work_dir=str(work_dir), process=proc)
     reg.register(handle)
@@ -42,7 +48,7 @@ def _ensure_stream(media: MediaItem, user_id: int) -> StreamHandle:
 
 
 @api_router.get("/{media_id}/playlist.m3u8")
-async def stream_playlist(
+def stream_playlist(
     media_id: int,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -57,6 +63,7 @@ async def stream_playlist(
     return Response(
         content=playlist.read_bytes(),
         media_type="application/vnd.apple.mpegurl",
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -64,7 +71,7 @@ _SEGMENT_NAME_RE = re.compile(r"^seg_\d{5}\.ts$")
 
 
 @api_router.get("/{media_id}/{segment_name}")
-async def stream_segment(
+def stream_segment(
     media_id: int,
     segment_name: str,
     user: Annotated[User, Depends(get_current_user)],
@@ -79,7 +86,11 @@ async def stream_segment(
     if not seg_path.exists():
         raise HTTPException(status_code=404)
     reg.touch(media_id, user.id)
-    return FileResponse(str(seg_path), media_type="video/mp2t")
+    return FileResponse(
+        str(seg_path),
+        media_type="video/mp2t",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 class _ProgressIn(BaseModel):
@@ -88,7 +99,7 @@ class _ProgressIn(BaseModel):
 
 
 @progress_router.post("/progress", status_code=204, include_in_schema=False)
-async def progress(
+def progress(
     payload: Annotated[_ProgressIn, Body()],
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],

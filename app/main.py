@@ -29,12 +29,27 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        # 1. Остановить фоновые задачи
         for t in (scanner_task, watchdog_task):
             t.cancel()
             try:
                 await t
             except (asyncio.CancelledError, Exception):
                 pass
+
+        # 2. Убить все активные ffmpeg-стримы (idle_seconds=0 → все попадают в выборку)
+        from app.streaming.stream_registry import get_registry
+        from app.streaming.watchdog import sweep_idle
+        try:
+            sweep_idle(get_registry(), idle_seconds=0.0)
+        except Exception:
+            pass
+
+        # 3. Закрыть httpx-клиент qBittorrent
+        try:
+            get_qbittorrent_client().close()
+        except Exception:
+            pass
 
 
 app = FastAPI(title="MediaServer", lifespan=lifespan)

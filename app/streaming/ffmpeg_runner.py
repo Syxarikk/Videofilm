@@ -60,7 +60,7 @@ def start_hls(params: HlsParams) -> subprocess.Popen:
     return subprocess.Popen(
         cmd,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,  # PIPE без читателя может заполниться и повесить ffmpeg на длинном видео
         # На Windows нет os.setsid; используем CREATE_NEW_PROCESS_GROUP вместо для kill-tree.
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
         start_new_session=os.name != "nt",
