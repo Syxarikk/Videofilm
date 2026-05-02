@@ -44,6 +44,7 @@ def client(db_factory):
     with TestClient(app, follow_redirects=False) as c:
         yield c
     app.dependency_overrides.clear()
+    c.cookies.clear()  # на всякий случай — изоляция между тестами
 
 
 @pytest.fixture

@@ -87,10 +87,10 @@ def test_verify_totp_full_flow(client, db_factory, monkeypatch, csrf_for):
     cookie = r.cookies.get("session")
 
     code = pyotp.TOTP(secret).now()
+    client.cookies.set("session", cookie)
     r2 = client.post(
         "/verify-totp",
         data={"code": code, "csrf_token": csrf_for(cookie)},
-        cookies={"session": cookie},
     )
     assert r2.status_code == 303
     assert r2.headers["location"] == "/library"
@@ -103,10 +103,10 @@ def test_verify_totp_wrong_code_returns_401(client, db_factory, csrf_for):
         data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
     )
     cookie = r.cookies.get("session")
+    client.cookies.set("session", cookie)
     r2 = client.post(
         "/verify-totp",
         data={"code": "000000", "csrf_token": csrf_for(cookie)},
-        cookies={"session": cookie},
     )
     assert r2.status_code == 401
 
@@ -176,3 +176,20 @@ def test_logout_clears_session_and_redirects(client, db_factory, csrf_for):
     # удалённая сессия даст 401 (или 303 от middleware-редиректа).
     r3 = client.get("/library", cookies={"session": cookie})
     assert r3.status_code in (303, 401, 404)
+
+
+def test_logout_set_cookie_has_security_flags(client, db_factory, csrf_for):
+    _, secret = make_user_with_totp(db_factory)
+    r = client.post("/login", data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)})
+    cookie = r.cookies.get("session")
+    code = pyotp.TOTP(secret).now()
+    client.cookies.set("session", cookie)
+    client.post("/verify-totp", data={"code": code, "csrf_token": csrf_for(cookie)})
+
+    r2 = client.post("/logout", data={"csrf_token": csrf_for(cookie)})
+    sc = r2.headers.get("set-cookie", "")
+    assert "session=" in sc
+    # Cookie должен быть удалён с теми же флагами, что и установлен
+    assert "HttpOnly" in sc or "httponly" in sc.lower()
+    assert "Secure" in sc or "secure" in sc.lower()
+    assert "SameSite=Strict" in sc or "samesite=strict" in sc.lower()

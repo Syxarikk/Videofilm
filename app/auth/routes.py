@@ -253,5 +253,5 @@ async def logout(
         delete_session(db, token)
         db.commit()
     response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(SESSION_COOKIE, path="/", httponly=True, secure=True, samesite="strict")
     return response
