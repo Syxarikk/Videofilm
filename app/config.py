@@ -24,6 +24,16 @@ class Settings(BaseSettings):
             raise ValueError("SESSION_SECRET must be at least 32 characters")
         return v
 
+    @field_validator("media_root")
+    @classmethod
+    def media_root_absolute(cls, v: str) -> str:
+        # Принимаем POSIX (`/srv/Общее`) и Windows (`C:\…`) абсолютные пути
+        is_posix_abs = v.startswith("/")
+        is_windows_abs = len(v) >= 3 and v[1:3] in (":\\", ":/")
+        if not (is_posix_abs or is_windows_abs):
+            raise ValueError(f"MEDIA_ROOT must be an absolute path, got: {v!r}")
+        return v
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
