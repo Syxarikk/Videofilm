@@ -1,0 +1,19 @@
+[Unit]
+Description=qBittorrent-nox
+After=network.target
+
+[Service]
+Type=simple
+User=mediasrv
+Group=mediasrv
+ExecStart=/usr/bin/qbittorrent-nox --webui-port=8080
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+NoNewPrivileges=true
+ReadWritePaths=/srv/Общее /var/log/mediasrv
+
+[Install]
+WantedBy=multi-user.target
