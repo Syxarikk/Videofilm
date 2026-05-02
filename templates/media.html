@@ -37,6 +37,15 @@
   } else {
     document.querySelector('main').innerHTML += '<p class="error">Браузер не поддерживает HLS. Скачайте оригинал.</p>';
   }
+
+  setInterval(() => {
+    if (video.paused || video.ended || isNaN(video.currentTime)) return;
+    fetch('/api/progress', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({media_id: {{ item.id }}, position_seconds: Math.floor(video.currentTime)}),
+    }).catch(e => console.warn('progress save failed', e));
+  }, 10000);
 })();
 </script>
 {% endblock %}

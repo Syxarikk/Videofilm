@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.auth.passwords import hash_password
 from app.auth.totp import encrypt_secret, _derive_key
-from app.models import MediaItem, User
+from app.models import MediaItem, User, WatchProgress
 from app.streaming.stream_registry import get_registry
 
 
@@ -105,3 +105,37 @@ def test_segment_unknown_returns_404(client, db_factory, csrf_for):
     client.get(f"/api/stream/{mid}/playlist.m3u8", cookies={"session": cookie})
     r = client.get(f"/api/stream/{mid}/seg_99999.ts", cookies={"session": cookie})
     assert r.status_code == 404
+
+
+def test_progress_endpoint_upserts_watch_progress(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    mid = _create_media(db_factory, SAMPLE)
+
+    r = client.post(
+        "/api/progress",
+        json={"media_id": mid, "position_seconds": 42},
+        cookies={"session": cookie},
+    )
+    assert r.status_code == 204
+
+    with db_factory() as s:
+        wp = s.scalars(select(WatchProgress).where(WatchProgress.media_id == mid)).one()
+        assert wp.position_seconds == 42
+
+    # Повторно — обновляет
+    r2 = client.post(
+        "/api/progress",
+        json={"media_id": mid, "position_seconds": 100},
+        cookies={"session": cookie},
+    )
+    assert r2.status_code == 204
+
+    with db_factory() as s:
+        wp = s.scalars(select(WatchProgress).where(WatchProgress.media_id == mid)).one()
+        assert wp.position_seconds == 100
+
+
+def test_progress_unauth_returns_401(client, db_factory):
+    mid = _create_media(db_factory, SAMPLE)
+    r = client.post("/api/progress", json={"media_id": mid, "position_seconds": 1})
+    assert r.status_code == 401

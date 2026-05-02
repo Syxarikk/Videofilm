@@ -1,21 +1,25 @@
 import re
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_current_user
 from app.deps import get_db
-from app.models import MediaItem, User
+from app.models import MediaItem, User, WatchProgress
 from app.streaming.ffmpeg_runner import HlsParams, kill, start_hls, wait_for_first_segment
 from app.streaming.stream_registry import StreamHandle, get_registry
 
 
 api_router = APIRouter(prefix="/api/stream")
+progress_router = APIRouter(prefix="/api")
 
 
 def _ensure_stream(media: MediaItem, user_id: int) -> StreamHandle:
@@ -76,3 +80,35 @@ async def stream_segment(
         raise HTTPException(status_code=404)
     reg.touch(media_id, user.id)
     return FileResponse(str(seg_path), media_type="video/mp2t")
+
+
+class _ProgressIn(BaseModel):
+    media_id: int
+    position_seconds: int
+
+
+@progress_router.post("/progress", status_code=204, include_in_schema=False)
+async def progress(
+    payload: Annotated[_ProgressIn, Body()],
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    # Upsert по (user_id, media_id)
+    existing = db.scalars(
+        select(WatchProgress).where(
+            WatchProgress.user_id == user.id,
+            WatchProgress.media_id == payload.media_id,
+        )
+    ).first()
+    now = datetime.now(timezone.utc)
+    if existing is not None:
+        existing.position_seconds = payload.position_seconds
+        existing.updated_at = now
+    else:
+        db.add(WatchProgress(
+            user_id=user.id, media_id=payload.media_id,
+            position_seconds=payload.position_seconds, updated_at=now,
+        ))
+    # Также используем как heartbeat для активного стрима
+    get_registry().touch(payload.media_id, user.id)
+    db.commit()
