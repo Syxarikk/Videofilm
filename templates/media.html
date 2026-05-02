@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<h1>{{ item.title }}</h1>
+<p style="color:#888">{{ (item.size_bytes / (1024**3)) | round(1) }} ГБ</p>
+
+<div id="player-container">
+  <video id="player" controls preload="metadata" style="width:100%; max-width:960px; background:#000"></video>
+</div>
+
+<p style="margin-top:1rem">
+  <a href="/api/download/{{ item.id }}" class="button">Скачать оригинал</a>
+  <form method="post" action="/api/media/{{ item.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить «{{ item.title }}»?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Удалить</button>
+  </form>
+  <a href="/library">← Библиотека</a>
+</p>
+
+<!-- Плеер подключается в Task 19 — здесь пока заглушка -->
+<script>
+console.log("media page loaded for {{ item.id }}");
+</script>
+{% endblock %}
