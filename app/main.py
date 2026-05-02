@@ -7,6 +7,7 @@ from starlette.requests import Request as StarletteRequest
 from app.admin.routes import router as admin_router
 from app.auth.routes import router as auth_router
 from app.library.routes import router as library_router
+from app.torrents.routes import api_router as torrents_api_router, router as torrents_router
 
 app = FastAPI(title="MediaServer")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -31,6 +32,8 @@ app.add_middleware(AuthRedirectMiddleware)
 app.include_router(auth_router)
 app.include_router(library_router)
 app.include_router(admin_router)
+app.include_router(torrents_api_router)
+app.include_router(torrents_router)
 
 
 @app.get("/health")
