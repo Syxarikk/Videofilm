@@ -1,0 +1,49 @@
+# MediaServer Caddyfile.
+# install.sh подставит {{DOMAIN}} на реальный домен.
+# Скопировать в /etc/caddy/Caddyfile.
+
+{{DOMAIN}} {
+    # HTTPS автоматически от Let's Encrypt; HTTP на 80 редиректит.
+
+    # Security headers (HSTS, защита от clickjacking, MIME-sniff)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        # CSP: разрешаем только свои static, inline-скрипты в шаблонах (htmx + plyer wiring)
+        Content-Security-Policy "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self'; connect-src 'self'"
+        # Удаляем дефолтный Server: Caddy header
+        -Server
+    }
+
+    # Rate limit на /login: ≤10 попыток в минуту с одного IP
+    # Требует caddy с плагином rate_limit (https://github.com/mholt/caddy-ratelimit)
+    # Если плагина нет — закомментируйте этот блок, защита остаётся через fail2ban.
+    # rate_limit {
+    #     zone login_zone {
+    #         key {remote_host}
+    #         events 10
+    #         window 1m
+    #     }
+    #     match {
+    #         path /login
+    #     }
+    # }
+
+    # Проксируем всё на uvicorn
+    reverse_proxy 127.0.0.1:8000 {
+        # Передаём настоящий IP клиента (для логов / fail2ban)
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+    }
+
+    # Логи в файл (для fail2ban-парсинга и общей отладки)
+    log {
+        output file /var/log/caddy/mediasrv-access.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+}
