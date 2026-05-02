@@ -11,3 +11,4 @@ venv/
 htmlcov/
 hls/
 *.log
+.superpowers/
