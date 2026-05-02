@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 
+from app.admin.routes import router as admin_router
 from app.auth.routes import router as auth_router
 from app.library.routes import router as library_router
 
@@ -29,6 +30,7 @@ class AuthRedirectMiddleware(BaseHTTPMiddleware):
 app.add_middleware(AuthRedirectMiddleware)
 app.include_router(auth_router)
 app.include_router(library_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Управление пользователями{% endblock %}
+{% block content %}
+<h1>Пользователи</h1>
+
+{% if created_user %}
+<p class="error">Создан пользователь <strong>{{ created_user.username }}</strong>.
+Временный пароль: <code>{{ temp_password }}</code> — передайте его пользователю и попросите сразу сменить.</p>
+{% endif %}
+
+<form method="post" action="/admin/users">
+  <label>Логин нового пользователя <input name="username" required pattern="[a-zA-Z0-9_]{3,32}"></label>
+  <label>Сделать админом? <input name="is_admin" type="checkbox" value="1"></label>
+  <button type="submit">Создать</button>
+</form>
+
+<table>
+  <thead><tr><th>ID</th><th>Логин</th><th>Админ?</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
+  <tbody>
+  {% for u in users %}
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.username }}</td>
+      <td>{{ "да" if u.is_admin else "нет" }}</td>
+      <td>{{ "вкл" if u.totp_enabled else "выкл" }}</td>
+      <td>{{ u.created_at.strftime("%Y-%m-%d") }}</td>
+      <td>
+        {% if u.id != user.id %}
+        <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');">
+          <button type="submit">Удалить</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
