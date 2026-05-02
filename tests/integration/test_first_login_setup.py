@@ -25,7 +25,10 @@ def test_login_redirects_to_change_password_for_fresh_user(client, db_factory):
 
 def test_change_password_requires_partial_session(client):
     r = client.get("/change-password")
-    assert r.status_code == 401
+    # Без сессии: либо 401 от dependency, либо 303 от AuthRedirectMiddleware (Task 19).
+    assert r.status_code in (303, 401)
+    if r.status_code == 303:
+        assert r.headers["location"] == "/login"
 
 
 def test_change_password_too_short_rejected(client, db_factory):

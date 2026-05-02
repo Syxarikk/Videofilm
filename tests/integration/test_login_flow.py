@@ -62,7 +62,10 @@ def make_user_with_totp(db_factory, *, username="alice", password="correct-passw
 
 def test_verify_totp_get_requires_partial_session(client):
     r = client.get("/verify-totp")
-    assert r.status_code == 401
+    # Без сессии: либо 401 от dependency, либо 303 от AuthRedirectMiddleware (Task 19).
+    assert r.status_code in (303, 401)
+    if r.status_code == 303:
+        assert r.headers["location"] == "/login"
 
 
 def test_verify_totp_full_flow(client, db_factory, monkeypatch):
