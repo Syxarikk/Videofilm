@@ -1,3 +1,4 @@
+import base64
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -6,14 +7,22 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth.backup_codes import verify_and_consume
+from app.auth.backup_codes import generate_codes, hash_code as bc_hash_code, verify_and_consume
 from app.auth.deps import SESSION_COOKIE, get_current_user_partial
 from app.auth.passwords import hash_password, verify_password
 from app.auth.sessions import create_session, promote_session
-from app.auth.totp import _derive_key, decrypt_secret, verify_code
+from app.auth.totp import (
+    _derive_key,
+    decrypt_secret,
+    encrypt_secret,
+    generate_secret,
+    provisioning_uri,
+    qr_png_bytes,
+    verify_code,
+)
 from app.config import get_settings
 from app.deps import get_db
-from app.models import User
+from app.models import BackupCode, User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -150,3 +159,81 @@ async def change_password_post(
     user.must_change_password = False
     db.commit()
     return RedirectResponse("/enroll-2fa", status_code=303)
+
+
+@router.get("/enroll-2fa", response_class=HTMLResponse)
+async def enroll_2fa_get(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_partial)],
+    db: Annotated[Session, Depends(get_db)],
+) -> HTMLResponse:
+    settings = get_settings()
+    key = _derive_key(settings.session_secret)
+
+    if user.totp_secret_encrypted is None:
+        secret = generate_secret()
+        user.totp_secret_encrypted = encrypt_secret(secret, key)
+    else:
+        secret = decrypt_secret(user.totp_secret_encrypted, key)
+
+    # Backup-коды: генерируем при первом GET'е этой страницы для пользователя.
+    existing = db.scalars(select(BackupCode).where(BackupCode.user_id == user.id)).all()
+    backup_plain: list[str] | None = None
+    if not existing:
+        backup_plain = generate_codes()
+        for c in backup_plain:
+            db.add(BackupCode(user_id=user.id, code_hash=bc_hash_code(c)))
+
+    db.commit()
+
+    uri = provisioning_uri(secret, user.username, settings.totp_issuer)
+    qr_b64 = base64.b64encode(qr_png_bytes(uri)).decode("ascii")
+
+    return templates.TemplateResponse(
+        request,
+        "enroll_2fa.html",
+        {
+            "user": user,
+            "qr_data_uri": f"data:image/png;base64,{qr_b64}",
+            "secret": secret,
+            "backup_codes": backup_plain,  # None если уже сгенерированы (а значит, страница перезагружена)
+            "error": None,
+        },
+    )
+
+
+@router.post("/enroll-2fa", response_model=None)
+async def enroll_2fa_post(
+    request: Request,
+    code: Annotated[str, Form()],
+    user: Annotated[User, Depends(get_current_user_partial)],
+    db: Annotated[Session, Depends(get_db)],
+) -> RedirectResponse | HTMLResponse:
+    if user.totp_secret_encrypted is None:
+        return RedirectResponse("/enroll-2fa", status_code=303)
+
+    settings = get_settings()
+    key = _derive_key(settings.session_secret)
+    secret = decrypt_secret(user.totp_secret_encrypted, key)
+
+    if not verify_code(secret, code.strip()):
+        return templates.TemplateResponse(
+            request,
+            "enroll_2fa.html",
+            {
+                "user": user,
+                "qr_data_uri": None,
+                "secret": None,
+                "backup_codes": None,
+                "error": "Неверный код. Проверьте время на телефоне и попробуйте снова.",
+            },
+            status_code=400,
+        )
+
+    user.totp_enabled = True
+    db.commit()
+
+    token = request.cookies.get(SESSION_COOKIE) or ""
+    promote_session(db, token, ttl_days=FULL_SESSION_TTL_DAYS)
+    db.commit()
+    return RedirectResponse("/library", status_code=303)
