@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 @router.get("/library", response_class=HTMLResponse)
-async def library_page(
+def library_page(
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -28,7 +28,7 @@ async def library_page(
 
 
 @router.get("/media/{media_id}", response_class=HTMLResponse)
-async def media_page(
+def media_page(
     media_id: int,
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
@@ -41,7 +41,7 @@ async def media_page(
 
 
 @router.post("/api/media/{media_id}/delete")
-async def delete_media(
+def delete_media(
     media_id: int,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],

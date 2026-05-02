@@ -17,7 +17,7 @@ router = APIRouter(prefix="/admin")
 
 
 @router.get("/users", response_class=HTMLResponse)
-async def list_users(
+def list_users(
     request: Request,
     admin: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
@@ -34,7 +34,7 @@ USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,32}$")
 
 
 @router.post("/users", response_class=HTMLResponse)
-async def create_user(
+def create_user(
     request: Request,
     username: Annotated[str, Form()],
     admin: Annotated[User, Depends(require_admin)],
@@ -100,7 +100,7 @@ async def create_user(
 
 
 @router.post("/users/{user_id}/delete")
-async def delete_user(
+def delete_user(
     user_id: int,
     admin: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],

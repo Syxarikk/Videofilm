@@ -39,12 +39,12 @@ def _set_session_cookie(response, token: str):
 
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_get(request: Request) -> HTMLResponse:
+def login_get(request: Request) -> HTMLResponse:
     return render(request, "login.html", {"error": None})
 
 
 @router.post("/login", response_model=None)
-async def login_post(
+def login_post(
     request: Request,
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
@@ -74,7 +74,7 @@ async def login_post(
 
 
 @router.get("/verify-totp", response_class=HTMLResponse)
-async def verify_totp_get(
+def verify_totp_get(
     request: Request,
     user: Annotated[User, Depends(get_current_user_partial)],
 ) -> HTMLResponse:
@@ -84,7 +84,7 @@ async def verify_totp_get(
 
 
 @router.post("/verify-totp", response_model=None)
-async def verify_totp_post(
+def verify_totp_post(
     request: Request,
     code: Annotated[str, Form()],
     user: Annotated[User, Depends(get_current_user_partial)],
@@ -124,7 +124,7 @@ MIN_PASSWORD_LEN = 12
 
 
 @router.get("/change-password", response_class=HTMLResponse)
-async def change_password_get(
+def change_password_get(
     request: Request,
     user: Annotated[User, Depends(get_current_user_partial)],
 ) -> HTMLResponse:
@@ -134,7 +134,7 @@ async def change_password_get(
 
 
 @router.post("/change-password", response_model=None)
-async def change_password_post(
+def change_password_post(
     request: Request,
     new_password: Annotated[str, Form()],
     confirm: Annotated[str, Form()],
@@ -164,7 +164,7 @@ async def change_password_post(
 
 
 @router.get("/enroll-2fa", response_class=HTMLResponse)
-async def enroll_2fa_get(
+def enroll_2fa_get(
     request: Request,
     user: Annotated[User, Depends(get_current_user_partial)],
     db: Annotated[Session, Depends(get_db)],
@@ -205,7 +205,7 @@ async def enroll_2fa_get(
 
 
 @router.post("/enroll-2fa", response_model=None)
-async def enroll_2fa_post(
+def enroll_2fa_post(
     request: Request,
     code: Annotated[str, Form()],
     user: Annotated[User, Depends(get_current_user_partial)],
@@ -243,7 +243,7 @@ async def enroll_2fa_post(
 
 
 @router.post("/logout")
-async def logout(
+def logout(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     _csrf: Annotated[None, Depends(verify_csrf)] = None,

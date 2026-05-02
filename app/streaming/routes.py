@@ -42,7 +42,7 @@ def _ensure_stream(media: MediaItem, user_id: int) -> StreamHandle:
 
 
 @api_router.get("/{media_id}/playlist.m3u8")
-async def stream_playlist(
+def stream_playlist(
     media_id: int,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
@@ -64,7 +64,7 @@ _SEGMENT_NAME_RE = re.compile(r"^seg_\d{5}\.ts$")
 
 
 @api_router.get("/{media_id}/{segment_name}")
-async def stream_segment(
+def stream_segment(
     media_id: int,
     segment_name: str,
     user: Annotated[User, Depends(get_current_user)],
@@ -88,7 +88,7 @@ class _ProgressIn(BaseModel):
 
 
 @progress_router.post("/progress", status_code=204, include_in_schema=False)
-async def progress(
+def progress(
     payload: Annotated[_ProgressIn, Body()],
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
