@@ -74,3 +74,34 @@ def test_playlist_404_for_unknown_media(client, db_factory, csrf_for):
     cookie = _logged_in(client, db_factory, csrf_for)
     r = client.get("/api/stream/9999/playlist.m3u8", cookies={"session": cookie})
     assert r.status_code == 404
+
+
+def test_segment_returned_after_playlist(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    mid = _create_media(db_factory, SAMPLE)
+
+    # Сначала запросим плейлист, чтобы стартовал ffmpeg
+    r = client.get(f"/api/stream/{mid}/playlist.m3u8", cookies={"session": cookie})
+    assert r.status_code == 200
+
+    # Достанем имя первого сегмента из плейлиста
+    seg_name = None
+    for line in r.text.splitlines():
+        if line.startswith("seg_") and line.endswith(".ts"):
+            seg_name = line
+            break
+    assert seg_name is not None, "плейлист не содержит ни одного сегмента"
+
+    r2 = client.get(f"/api/stream/{mid}/{seg_name}", cookies={"session": cookie})
+    assert r2.status_code == 200
+    assert r2.headers["content-type"] == "video/mp2t"
+    assert len(r2.content) > 0
+
+
+def test_segment_unknown_returns_404(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    mid = _create_media(db_factory, SAMPLE)
+    # Сначала запустим стрим
+    client.get(f"/api/stream/{mid}/playlist.m3u8", cookies={"session": cookie})
+    r = client.get(f"/api/stream/{mid}/seg_99999.ts", cookies={"session": cookie})
+    assert r.status_code == 404

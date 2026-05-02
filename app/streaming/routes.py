@@ -1,3 +1,4 @@
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -53,3 +54,25 @@ async def stream_playlist(
         content=playlist.read_bytes(),
         media_type="application/vnd.apple.mpegurl",
     )
+
+
+_SEGMENT_NAME_RE = re.compile(r"^seg_\d{5}\.ts$")
+
+
+@api_router.get("/{media_id}/{segment_name}")
+async def stream_segment(
+    media_id: int,
+    segment_name: str,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    if not _SEGMENT_NAME_RE.match(segment_name):
+        raise HTTPException(status_code=404)
+    reg = get_registry()
+    handle = reg.get(media_id, user.id)
+    if handle is None:
+        raise HTTPException(status_code=410, detail="стрим уже завершён, обновите страницу")
+    seg_path = Path(handle.work_dir) / segment_name
+    if not seg_path.exists():
+        raise HTTPException(status_code=404)
+    reg.touch(media_id, user.id)
+    return FileResponse(str(seg_path), media_type="video/mp2t")
