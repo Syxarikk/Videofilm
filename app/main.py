@@ -10,6 +10,7 @@ from starlette.requests import Request as StarletteRequest
 from app.admin.routes import router as admin_router
 from app.auth.routes import router as auth_router
 from app.deps import get_db_factory, get_qbittorrent_client
+from app.download.routes import api_router as download_api_router
 from app.library.routes import router as library_router
 from app.streaming.routes import api_router as streaming_api_router, progress_router as streaming_progress_router
 from app.streaming.watchdog import watchdog_loop
@@ -63,6 +64,7 @@ app.include_router(torrents_api_router)
 app.include_router(torrents_router)
 app.include_router(streaming_api_router)
 app.include_router(streaming_progress_router)
+app.include_router(download_api_router)
 
 
 @app.get("/health")
