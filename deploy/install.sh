@@ -94,8 +94,8 @@ else
 fi
 
 echo "==> Step 8/10: systemd unit-ы"
-cp /opt/mediasrv/deploy/systemd/mediasrv.service /etc/systemd/system/
-cp /opt/mediasrv/deploy/systemd/qbittorrent-nox.service /etc/systemd/system/
+sed "s|{{MEDIA_ROOT}}|$MEDIA_ROOT|g" /opt/mediasrv/deploy/systemd/mediasrv.service > /etc/systemd/system/mediasrv.service
+sed "s|{{MEDIA_ROOT}}|$MEDIA_ROOT|g" /opt/mediasrv/deploy/systemd/qbittorrent-nox.service > /etc/systemd/system/qbittorrent-nox.service
 systemctl daemon-reload
 systemctl enable mediasrv.service qbittorrent-nox.service
 systemctl start qbittorrent-nox.service mediasrv.service

@@ -13,7 +13,7 @@ KillMode=mixed
 TimeoutStopSec=30
 
 NoNewPrivileges=true
-ReadWritePaths=/srv/Общее /var/log/mediasrv
+ReadWritePaths={{MEDIA_ROOT}} /var/log/mediasrv
 
 [Install]
 WantedBy=multi-user.target

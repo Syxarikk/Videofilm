@@ -22,7 +22,7 @@ ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
 PrivateDevices=true
-ReadWritePaths=/opt/mediasrv /srv/Общее /var/lib/mediasrv /var/log/mediasrv
+ReadWritePaths=/opt/mediasrv {{MEDIA_ROOT}} /var/lib/mediasrv /var/log/mediasrv
 
 # Лимиты ресурсов (медиа-сервер не должен сожрать всю RAM)
 MemoryHigh=4G
