@@ -24,6 +24,12 @@ from app.csrf import verify_csrf
 from app.deps import get_db, render
 from app.models import BackupCode, User
 
+# Pre-computed bcrypt hash for constant-time login.
+# Когда пользователя с таким логином нет, мы всё равно делаем verify_password
+# против этого хеша — иначе атакующий по таймингу узнает, есть ли логин в системе.
+# Hash = bcrypt cost=12 of a canary string we never use.
+_DUMMY_HASH = "$2b$12$2c.5f53Q3NK9EuhHoCSFSuD6I6GXXAE9Vd654eSySWBtwDm.adhOC"
+
 router = APIRouter()
 
 PARTIAL_SESSION_TTL_DAYS = 1
@@ -52,7 +58,10 @@ def login_post(
     _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse | HTMLResponse:
     user = db.scalars(select(User).where(User.username == username)).first()
-    if user is None or not verify_password(password, user.password_hash):
+    # Constant-time: всегда выполняем bcrypt, даже если юзера нет
+    hash_to_check = user.password_hash if user is not None else _DUMMY_HASH
+    password_ok = verify_password(password, hash_to_check)
+    if user is None or not password_ok:
         return render(
             request, "login.html", {"error": "Неверный логин или пароль"},
             status_code=401,
