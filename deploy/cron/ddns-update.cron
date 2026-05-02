@@ -1,0 +1,9 @@
+# Каждые 5 минут обновляем DNS-запись на duckdns.org.
+# Установка: sudo cp /opt/mediasrv/deploy/cron/ddns-update.cron /etc/cron.d/mediasrv-ddns
+# Перед установкой: подставить SUBDOMAIN и TOKEN из .env
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Замените YOUR_SUBDOMAIN и YOUR_TOKEN на реальные значения, прежде чем устанавливать!
+*/5 * * * * mediasrv /opt/mediasrv/scripts/ddns_update.sh YOUR_SUBDOMAIN YOUR_TOKEN >> /var/log/mediasrv/ddns.log 2>&1
