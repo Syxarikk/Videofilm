@@ -139,3 +139,21 @@ def test_progress_unauth_returns_401(client, db_factory):
     mid = _create_media(db_factory, SAMPLE)
     r = client.post("/api/progress", json={"media_id": mid, "position_seconds": 1})
     assert r.status_code == 401
+
+
+def test_playlist_response_has_no_store_cache(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    mid = _create_media(db_factory, SAMPLE)
+    r = client.get(f"/api/stream/{mid}/playlist.m3u8", cookies={"session": cookie})
+    assert r.status_code == 200
+    assert "no-store" in r.headers.get("cache-control", "").lower()
+
+
+def test_segment_response_has_no_store_cache(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    mid = _create_media(db_factory, SAMPLE)
+    r = client.get(f"/api/stream/{mid}/playlist.m3u8", cookies={"session": cookie})
+    seg_name = next((line for line in r.text.splitlines() if line.startswith("seg_")), None)
+    assert seg_name
+    r2 = client.get(f"/api/stream/{mid}/{seg_name}", cookies={"session": cookie})
+    assert "no-store" in r2.headers.get("cache-control", "").lower()

@@ -63,6 +63,7 @@ def stream_playlist(
     return Response(
         content=playlist.read_bytes(),
         media_type="application/vnd.apple.mpegurl",
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -85,7 +86,11 @@ def stream_segment(
     if not seg_path.exists():
         raise HTTPException(status_code=404)
     reg.touch(media_id, user.id)
-    return FileResponse(str(seg_path), media_type="video/mp2t")
+    return FileResponse(
+        str(seg_path),
+        media_type="video/mp2t",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 class _ProgressIn(BaseModel):
