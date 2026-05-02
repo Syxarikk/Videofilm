@@ -88,3 +88,29 @@ def test_regular_user_cannot_create(client, db_factory):
     cookie = make_regular_logged_in(client, db_factory)
     r = client.post("/admin/users", data={"username": "evil"}, cookies={"session": cookie})
     assert r.status_code == 403
+
+
+def test_admin_can_delete_other_user(client, db_factory):
+    cookie = make_admin_logged_in(client, db_factory)
+    client.post("/admin/users", data={"username": "victim"}, cookies={"session": cookie})
+
+    with db_factory() as s:
+        from sqlalchemy import select
+        victim = s.scalars(select(User).where(User.username == "victim")).one()
+
+    r = client.post(f"/admin/users/{victim.id}/delete", cookies={"session": cookie})
+    assert r.status_code == 303
+
+    with db_factory() as s:
+        from sqlalchemy import select
+        gone = s.scalars(select(User).where(User.username == "victim")).first()
+        assert gone is None
+
+
+def test_admin_cannot_delete_themselves(client, db_factory):
+    cookie = make_admin_logged_in(client, db_factory)
+    with db_factory() as s:
+        from sqlalchemy import select
+        me = s.scalars(select(User).where(User.username == "root")).one()
+    r = client.post(f"/admin/users/{me.id}/delete", cookies={"session": cookie})
+    assert r.status_code == 400

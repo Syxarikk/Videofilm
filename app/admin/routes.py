@@ -2,8 +2,8 @@ import re
 import secrets
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -97,3 +97,19 @@ async def create_user(
             "temp_password": temp_password,
         },
     )
+
+
+@router.post("/users/{user_id}/delete")
+async def delete_user(
+    user_id: int,
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[Session, Depends(get_db)],
+) -> RedirectResponse:
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404)
+    db.delete(target)
+    db.commit()
+    return RedirectResponse("/admin/users", status_code=303)
