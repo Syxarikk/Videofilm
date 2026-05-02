@@ -14,6 +14,8 @@ def _clear_caches():
     from app.deps import get_db_factory
     get_settings.cache_clear()
     get_db_factory.cache_clear()
+    from app.deps import get_qbittorrent_client
+    get_qbittorrent_client.cache_clear()
 
 
 @pytest.fixture(autouse=True)

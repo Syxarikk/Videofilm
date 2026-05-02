@@ -50,3 +50,13 @@ def render(
     if context:
         full.update(context)
     return _TEMPLATES.TemplateResponse(request, template_name, full, status_code=status_code)
+
+
+from functools import lru_cache as _lru_cache_qb
+from app.torrents.client import QBittorrentClient
+
+
+@_lru_cache_qb(maxsize=1)
+def get_qbittorrent_client() -> QBittorrentClient:
+    s = get_settings()
+    return QBittorrentClient(s.qbittorrent_url, s.qbittorrent_username, s.qbittorrent_password)
