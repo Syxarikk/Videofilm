@@ -107,3 +107,15 @@ def test_status_handles_qbittorrent_down(client, db_factory, csrf_for):
     )
     r = client.get("/api/torrents/status", cookies={"session": cookie})
     assert r.status_code == 503
+
+
+def test_downloads_page_requires_auth(client):
+    r = client.get("/downloads")
+    assert r.status_code == 303
+
+
+def test_downloads_page_has_htmx_polling(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    r = client.get("/downloads", cookies={"session": cookie})
+    assert r.status_code == 200
+    assert "hx-get" in r.text or "/api/torrents/status" in r.text

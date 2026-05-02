@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Загрузки{% endblock %}
+{% block content %}
+<h1>Активные загрузки</h1>
+<p><a href="/add-torrent">+ Добавить magnet</a> · <a href="/library">→ Библиотека</a></p>
+<div id="torrents-table"
+     hx-get="/api/torrents/status"
+     hx-trigger="load, every 2s"
+     hx-swap="innerHTML"
+     hx-ext="json-enc">
+  Загрузка…
+</div>
+
+<script>
+// Простой обработчик: hx-get вернёт JSON, мы рендерим его в таблицу руками.
+document.body.addEventListener('htmx:afterRequest', (e) => {
+  if (e.detail.requestConfig.path !== '/api/torrents/status') return;
+  if (!e.detail.successful) {
+    document.getElementById('torrents-table').innerHTML = '<p class="error">qBittorrent недоступен</p>';
+    return;
+  }
+  const data = JSON.parse(e.detail.xhr.responseText);
+  if (data.length === 0) {
+    document.getElementById('torrents-table').innerHTML = '<p>Активных загрузок нет.</p>';
+    return;
+  }
+  const rows = data.map(t => `
+    <tr>
+      <td>${t.name}</td>
+      <td>${t.progress_percent}%</td>
+      <td>${t.speed_human}</td>
+      <td>${t.eta_human}</td>
+      <td>${t.state}</td>
+    </tr>
+  `).join('');
+  document.getElementById('torrents-table').innerHTML = `
+    <table>
+      <thead><tr><th>Название</th><th>%</th><th>Скорость</th><th>ETA</th><th>Статус</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+});
+</script>
+{% endblock %}

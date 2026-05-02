@@ -84,3 +84,11 @@ async def add_torrent_page(
     user: Annotated[User, Depends(get_current_user)],
 ):
     return render(request, "add_torrent.html", {"user": user})
+
+
+@router.get("/downloads", response_class=HTMLResponse)
+async def downloads_page(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    return render(request, "downloads.html", {"user": user})
