@@ -44,3 +44,14 @@ def client(db_factory):
     with TestClient(app, follow_redirects=False) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def csrf_for(client):
+    """Возвращает функцию: csrf_for(cookie) → токен, валидный при той же session-cookie."""
+    from app.csrf import generate_token
+
+    def _make(cookie: str | None) -> str:
+        return generate_token(cookie or "")
+
+    return _make

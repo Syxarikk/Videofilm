@@ -3,7 +3,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,11 +20,11 @@ from app.auth.totp import (
     verify_code,
 )
 from app.config import get_settings
-from app.deps import get_db
+from app.csrf import verify_csrf
+from app.deps import get_db, render
 from app.models import BackupCode, User
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 PARTIAL_SESSION_TTL_DAYS = 1
 FULL_SESSION_TTL_DAYS = 30
@@ -41,7 +40,7 @@ def _set_session_cookie(response, token: str):
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_get(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "login.html", {"error": None})
+    return render(request, "login.html", {"error": None})
 
 
 @router.post("/login", response_model=None)
@@ -50,10 +49,11 @@ async def login_post(
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
     db: Annotated[Session, Depends(get_db)],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse | HTMLResponse:
     user = db.scalars(select(User).where(User.username == username)).first()
     if user is None or not verify_password(password, user.password_hash):
-        return templates.TemplateResponse(
+        return render(
             request, "login.html", {"error": "Неверный логин или пароль"},
             status_code=401,
         )
@@ -78,7 +78,7 @@ async def verify_totp_get(
     request: Request,
     user: Annotated[User, Depends(get_current_user_partial)],
 ) -> HTMLResponse:
-    return templates.TemplateResponse(
+    return render(
         request, "verify_totp.html", {"user": user, "error": None}
     )
 
@@ -89,6 +89,7 @@ async def verify_totp_post(
     code: Annotated[str, Form()],
     user: Annotated[User, Depends(get_current_user_partial)],
     db: Annotated[Session, Depends(get_db)],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse | HTMLResponse:
     code = code.strip()
     settings = get_settings()
@@ -108,7 +109,7 @@ async def verify_totp_post(
             db.commit()
 
     if not ok:
-        return templates.TemplateResponse(
+        return render(
             request, "verify_totp.html", {"user": user, "error": "Неверный код"},
             status_code=401,
         )
@@ -127,7 +128,7 @@ async def change_password_get(
     request: Request,
     user: Annotated[User, Depends(get_current_user_partial)],
 ) -> HTMLResponse:
-    return templates.TemplateResponse(
+    return render(
         request, "change_password.html", {"user": user, "error": None}
     )
 
@@ -139,16 +140,17 @@ async def change_password_post(
     confirm: Annotated[str, Form()],
     user: Annotated[User, Depends(get_current_user_partial)],
     db: Annotated[Session, Depends(get_db)],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse | HTMLResponse:
     if len(new_password) < MIN_PASSWORD_LEN:
-        return templates.TemplateResponse(
+        return render(
             request,
             "change_password.html",
             {"user": user, "error": f"Пароль должен быть не короче {MIN_PASSWORD_LEN} символов"},
             status_code=400,
         )
     if new_password != confirm:
-        return templates.TemplateResponse(
+        return render(
             request,
             "change_password.html",
             {"user": user, "error": "Пароли не совпадают"},
@@ -189,7 +191,7 @@ async def enroll_2fa_get(
     uri = provisioning_uri(secret, user.username, settings.totp_issuer)
     qr_b64 = base64.b64encode(qr_png_bytes(uri)).decode("ascii")
 
-    return templates.TemplateResponse(
+    return render(
         request,
         "enroll_2fa.html",
         {
@@ -208,6 +210,7 @@ async def enroll_2fa_post(
     code: Annotated[str, Form()],
     user: Annotated[User, Depends(get_current_user_partial)],
     db: Annotated[Session, Depends(get_db)],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse | HTMLResponse:
     if user.totp_secret_encrypted is None:
         return RedirectResponse("/enroll-2fa", status_code=303)
@@ -217,7 +220,7 @@ async def enroll_2fa_post(
     secret = decrypt_secret(user.totp_secret_encrypted, key)
 
     if not verify_code(secret, code.strip()):
-        return templates.TemplateResponse(
+        return render(
             request,
             "enroll_2fa.html",
             {
@@ -243,6 +246,7 @@ async def enroll_2fa_post(
 async def logout(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse:
     token = request.cookies.get(SESSION_COOKIE)
     if token:

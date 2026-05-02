@@ -2,6 +2,9 @@ from functools import lru_cache
 from typing import Callable
 
 from fastapi import Depends, Request
+from fastapi import Request as _Req
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings, get_settings
@@ -26,3 +29,24 @@ def get_db(factory: sessionmaker[Session] = Depends(get_db_factory)) -> Session:
 
 def get_app_settings() -> Settings:
     return get_settings()
+
+
+_TEMPLATES = Jinja2Templates(directory="templates")
+
+
+def render(
+    request: _Req,
+    template_name: str,
+    context: dict | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    """Рендеринг шаблона с авто-инжектом csrf_token из текущей сессии.
+    Все роуты должны использовать этот хелпер вместо прямого Jinja2Templates."""
+    from app.auth.deps import SESSION_COOKIE
+    from app.csrf import generate_token
+
+    session_key = request.cookies.get(SESSION_COOKIE) or ""
+    full = {"csrf_token": generate_token(session_key)}
+    if context:
+        full.update(context)
+    return _TEMPLATES.TemplateResponse(request, template_name, full, status_code=status_code)
