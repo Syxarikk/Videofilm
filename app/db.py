@@ -1,4 +1,5 @@
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, event
+from sqlalchemy.engine import Engine as _Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -25,3 +26,15 @@ def make_engine(database_url: str) -> Engine:
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+
+
+@event.listens_for(_Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    """SQLite по умолчанию не enforce'ит foreign keys; включаем явно для каждого нового подключения."""
+    # Только для SQLite (модуль sqlite3 / pysqlite)
+    module_name = type(dbapi_connection).__module__
+    if "sqlite" not in module_name.lower():
+        return
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
