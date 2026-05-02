@@ -8,6 +8,15 @@ from app.db import Base, make_engine, make_session_factory
 
 
 @pytest.fixture(autouse=True)
+def _clear_caches():
+    yield
+    from app.config import get_settings
+    from app.deps import get_db_factory
+    get_settings.cache_clear()
+    get_db_factory.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def env(monkeypatch):
     monkeypatch.setenv("SESSION_SECRET", "x" * 64)
     monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")

@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Callable
 
 from fastapi import Depends, Request
@@ -7,8 +8,9 @@ from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
 
 
+@lru_cache(maxsize=1)
 def get_db_factory() -> sessionmaker[Session]:
-    """Singleton-фабрика. Подменяется в тестах через app.dependency_overrides."""
+    """Singleton: один engine на всё приложение."""
     s = get_settings()
     engine = make_engine(s.database_url)
     return make_session_factory(engine)
