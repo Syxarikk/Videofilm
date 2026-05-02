@@ -11,6 +11,7 @@ from app.admin.routes import router as admin_router
 from app.auth.routes import router as auth_router
 from app.deps import get_db_factory, get_qbittorrent_client
 from app.library.routes import router as library_router
+from app.streaming.routes import api_router as streaming_api_router
 from app.torrents.routes import api_router as torrents_api_router, router as torrents_router
 from app.torrents.scanner import scanner_loop
 
@@ -55,6 +56,7 @@ app.include_router(library_router)
 app.include_router(admin_router)
 app.include_router(torrents_api_router)
 app.include_router(torrents_router)
+app.include_router(streaming_api_router)
 
 
 @app.get("/health")
