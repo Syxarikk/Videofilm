@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Двухфакторная аутентификация{% endblock %}
+{% block content %}
+<h1>Введите 6-значный код</h1>
+<p>Код из приложения-аутентификатора (Google Authenticator / Authy / 1Password) или один из ваших backup-кодов.</p>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" action="/verify-totp">
+  <label>Код <input name="code" autocomplete="one-time-code" autofocus required></label>
+  <button type="submit">Подтвердить</button>
+</form>
+{% endblock %}

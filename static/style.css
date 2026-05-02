@@ -1,0 +1,12 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; line-height: 1.4; }
+header { display:flex; justify-content:space-between; align-items:center; padding: 1rem 0; border-bottom: 1px solid #ddd; }
+header a { text-decoration: none; font-weight: 600; }
+header nav { display: flex; gap: 1rem; align-items: center; }
+form { display: grid; gap: 0.5rem; max-width: 360px; }
+label { font-weight: 500; }
+input, button { padding: 0.5rem; font: inherit; }
+button { cursor: pointer; }
+.error { color: #c00; padding: 0.5rem; background: #fee; border-radius: 4px; }
+.codes { font-family: monospace; background: #f4f4f4; padding: 1rem; border-radius: 4px; }
+.codes li { margin: 0.25rem 0; }

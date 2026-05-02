@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Библиотека{% endblock %}
+{% block content %}
+<h1>Библиотека</h1>
+{% if not items %}
+  <p>Здесь пока ничего нет. Добавьте magnet-ссылку в разделе «Загрузки» (появится в Плане 2).</p>
+{% else %}
+  <ul>
+    {% for it in items %}<li>{{ it.title }}</li>{% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
