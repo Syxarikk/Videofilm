@@ -97,8 +97,10 @@ else
 fi
 
 echo "==> Step 7/10: Применение миграций + создание первого админа"
-sudo -u mediasrv /opt/mediasrv/venv/bin/alembic -c /opt/mediasrv/alembic.ini upgrade head
-if ! sudo -u mediasrv /opt/mediasrv/venv/bin/python -c "
+# Все команды должны выполняться из /opt/mediasrv, чтобы alembic нашёл alembic.ini
+# и Python-импорты `from app.config ...` сработали (CWD добавляется в sys.path).
+sudo -u mediasrv bash -c "cd /opt/mediasrv && /opt/mediasrv/venv/bin/alembic upgrade head"
+if ! sudo -u mediasrv bash -c "cd /opt/mediasrv && /opt/mediasrv/venv/bin/python -c '
 from sqlalchemy import select
 from app.config import get_settings
 from app.db import make_engine, make_session_factory
@@ -108,9 +110,9 @@ f = make_session_factory(e)
 with f() as s:
     u = s.scalars(select(User).where(User.is_admin == True)).first()
     exit(0 if u else 1)
-" 2>/dev/null; then
+'" 2>/dev/null; then
   echo "    создаём первого админа"
-  sudo -u mediasrv /opt/mediasrv/venv/bin/python -m scripts.create_admin
+  sudo -u mediasrv bash -c "cd /opt/mediasrv && /opt/mediasrv/venv/bin/python -m scripts.create_admin"
 else
   echo "    админ уже есть, пропускаем"
 fi
