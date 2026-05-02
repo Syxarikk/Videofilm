@@ -58,6 +58,12 @@ chown -R mediasrv:mediasrv "$MEDIA_ROOT"
 echo "==> Step 4/10: Клонирование/обновление репозитория"
 if [ ! -d /opt/mediasrv/.git ]; then
   read -rp "URL репозитория (git): " REPO
+  # Если /opt/mediasrv уже непустая (например, от useradd skel-файлов),
+  # очищаем её перед clone — иначе git clone падает с "not an empty directory".
+  if [ -n "$(ls -A /opt/mediasrv 2>/dev/null)" ]; then
+    echo "    /opt/mediasrv не пуста, очищаем перед clone"
+    rm -rf /opt/mediasrv/* /opt/mediasrv/.[!.]* 2>/dev/null || true
+  fi
   sudo -u mediasrv git clone "$REPO" /opt/mediasrv
 else
   echo "    репозиторий уже есть, пропускаем clone"
