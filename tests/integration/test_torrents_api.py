@@ -65,3 +65,16 @@ def test_unauthenticated_redirect(client, csrf_for):
     )
     # /api/* префикс — middleware не редиректит, отдаёт 401
     assert r.status_code == 401
+
+
+def test_add_torrent_page_renders_for_logged_in_user(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    r = client.get("/add-torrent", cookies={"session": cookie})
+    assert r.status_code == 200
+    assert "magnet" in r.text.lower()
+
+
+def test_add_torrent_page_unauth_redirects(client):
+    r = client.get("/add-torrent")
+    assert r.status_code == 303
+    assert r.headers["location"] == "/login"

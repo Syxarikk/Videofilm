@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Добавить торрент{% endblock %}
+{% block content %}
+<h1>Добавить magnet-ссылку</h1>
+<p>Сервер скачает торрент и появится в библиотеке после загрузки.</p>
+<form method="post" action="/api/torrents">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Magnet-ссылка<br>
+    <input name="magnet" placeholder="magnet:?xt=urn:btih:..." required style="width: 100%; max-width: 600px">
+  </label>
+  <button type="submit">Добавить</button>
+</form>
+<p><a href="/downloads">→ Активные загрузки</a> · <a href="/library">← Библиотека</a></p>
+{% endblock %}

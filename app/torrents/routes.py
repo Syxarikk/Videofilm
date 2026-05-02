@@ -1,14 +1,14 @@
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_current_user
 from app.config import Settings, get_settings
 from app.csrf import verify_csrf
-from app.deps import get_db, get_qbittorrent_client
+from app.deps import get_db, get_qbittorrent_client, render
 from app.models import User
 from app.torrents.client import QBittorrentClient, QBittorrentError
 
@@ -35,3 +35,11 @@ async def add_torrent(
     except QBittorrentError as e:
         raise HTTPException(status_code=503, detail=f"qBittorrent недоступен: {e}")
     return RedirectResponse("/downloads", status_code=303)
+
+
+@router.get("/add-torrent", response_class=HTMLResponse)
+async def add_torrent_page(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    return render(request, "add_torrent.html", {"user": user})
