@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.backup_codes import verify_and_consume
 from app.auth.deps import SESSION_COOKIE, get_current_user_partial
-from app.auth.passwords import verify_password
+from app.auth.passwords import hash_password, verify_password
 from app.auth.sessions import create_session, promote_session
 from app.auth.totp import _derive_key, decrypt_secret, verify_code
 from app.config import get_settings
@@ -108,3 +108,45 @@ async def verify_totp_post(
     promote_session(db, token, ttl_days=FULL_SESSION_TTL_DAYS)
     db.commit()
     return RedirectResponse("/library", status_code=303)
+
+
+MIN_PASSWORD_LEN = 12
+
+
+@router.get("/change-password", response_class=HTMLResponse)
+async def change_password_get(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user_partial)],
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request, "change_password.html", {"user": user, "error": None}
+    )
+
+
+@router.post("/change-password", response_model=None)
+async def change_password_post(
+    request: Request,
+    new_password: Annotated[str, Form()],
+    confirm: Annotated[str, Form()],
+    user: Annotated[User, Depends(get_current_user_partial)],
+    db: Annotated[Session, Depends(get_db)],
+) -> RedirectResponse | HTMLResponse:
+    if len(new_password) < MIN_PASSWORD_LEN:
+        return templates.TemplateResponse(
+            request,
+            "change_password.html",
+            {"user": user, "error": f"Пароль должен быть не короче {MIN_PASSWORD_LEN} символов"},
+            status_code=400,
+        )
+    if new_password != confirm:
+        return templates.TemplateResponse(
+            request,
+            "change_password.html",
+            {"user": user, "error": "Пароли не совпадают"},
+            status_code=400,
+        )
+
+    user.password_hash = hash_password(new_password)
+    user.must_change_password = False
+    db.commit()
+    return RedirectResponse("/enroll-2fa", status_code=303)
