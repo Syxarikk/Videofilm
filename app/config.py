@@ -1,3 +1,4 @@
+import tempfile as _tempfile
 from functools import lru_cache
 
 from pydantic import field_validator
@@ -14,6 +15,7 @@ class Settings(BaseSettings):
     qbittorrent_username: str
     qbittorrent_password: str
     totp_issuer: str = "MediaServer"
+    hls_work_root: str = _tempfile.gettempdir()
 
     @field_validator("session_secret")
     @classmethod

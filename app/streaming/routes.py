@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_current_user
+from app.config import get_settings
 from app.deps import get_db
 from app.models import MediaItem, User, WatchProgress
 from app.streaming.ffmpeg_runner import HlsParams, kill, start_hls, wait_for_first_segment
@@ -30,7 +31,12 @@ def _ensure_stream(media: MediaItem, user_id: int) -> StreamHandle:
     if existing is not None:
         reg.touch(media.id, user_id)
         return existing
-    work_dir = Path(tempfile.mkdtemp(prefix=f"hls_m{media.id}_u{user_id}_"))
+    settings = get_settings()
+    Path(settings.hls_work_root).mkdir(parents=True, exist_ok=True)
+    work_dir = Path(tempfile.mkdtemp(
+        prefix=f"hls_m{media.id}_u{user_id}_",
+        dir=settings.hls_work_root,
+    ))
     proc = start_hls(HlsParams(source=media.file_path, work_dir=str(work_dir), seek_seconds=0.0))
     handle = StreamHandle(media_id=media.id, user_id=user_id, work_dir=str(work_dir), process=proc)
     reg.register(handle)
