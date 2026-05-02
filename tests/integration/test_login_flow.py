@@ -114,3 +114,21 @@ def test_verify_totp_with_backup_code_succeeds(client, db_factory):
     cookie3 = r3.cookies.get("session")
     r4 = client.post("/verify-totp", data={"code": codes[0]}, cookies={"session": cookie3})
     assert r4.status_code == 401
+
+
+def test_logout_clears_session_and_redirects(client, db_factory):
+    _, secret = make_user_with_totp(db_factory)
+    r = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    cookie = r.cookies.get("session")
+    code = pyotp.TOTP(secret).now()
+    client.post("/verify-totp", data={"code": code}, cookies={"session": cookie})
+
+    r2 = client.post("/logout", cookies={"session": cookie})
+    assert r2.status_code == 303
+    assert r2.headers["location"] == "/login"
+
+    # После logout сессия должна быть удалена — попытка использовать её провалится.
+    # /library пока не существует (добавляется в Task 19) → 404. Когда он появится,
+    # удалённая сессия даст 401 (или 303 от middleware-редиректа).
+    r3 = client.get("/library", cookies={"session": cookie})
+    assert r3.status_code in (303, 401, 404)

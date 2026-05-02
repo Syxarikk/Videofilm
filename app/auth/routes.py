@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.backup_codes import generate_codes, hash_code as bc_hash_code, verify_and_consume
 from app.auth.deps import SESSION_COOKIE, get_current_user_partial
 from app.auth.passwords import hash_password, verify_password
-from app.auth.sessions import create_session, promote_session
+from app.auth.sessions import create_session, delete_session, promote_session
 from app.auth.totp import (
     _derive_key,
     decrypt_secret,
@@ -237,3 +237,17 @@ async def enroll_2fa_post(
     promote_session(db, token, ttl_days=FULL_SESSION_TTL_DAYS)
     db.commit()
     return RedirectResponse("/library", status_code=303)
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+) -> RedirectResponse:
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        delete_session(db, token)
+        db.commit()
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
