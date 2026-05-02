@@ -78,3 +78,32 @@ def test_add_torrent_page_unauth_redirects(client):
     r = client.get("/add-torrent")
     assert r.status_code == 303
     assert r.headers["location"] == "/login"
+
+
+@respx.mock
+def test_status_returns_active_torrents(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    respx.post("http://127.0.0.1:8080/api/v2/auth/login").mock(
+        return_value=httpx.Response(200, text="Ok.")
+    )
+    respx.get("http://127.0.0.1:8080/api/v2/torrents/info").mock(return_value=httpx.Response(200, json=[
+        {"hash": "abc", "name": "Movie.mkv", "progress": 0.42, "dlspeed": 1500000,
+         "state": "downloading", "size": 4_000_000_000, "save_path": "/x", "content_path": "/x/Movie.mkv", "eta": 3600}
+    ]))
+    r = client.get("/api/torrents/status", cookies={"session": cookie})
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 1
+    assert data[0]["hash"] == "abc"
+    assert data[0]["progress_percent"] == 42
+    assert data[0]["speed_human"].endswith("/s")
+
+
+@respx.mock
+def test_status_handles_qbittorrent_down(client, db_factory, csrf_for):
+    cookie = _logged_in(client, db_factory, csrf_for)
+    respx.post("http://127.0.0.1:8080/api/v2/auth/login").mock(
+        return_value=httpx.Response(500)
+    )
+    r = client.get("/api/torrents/status", cookies={"session": cookie})
+    assert r.status_code == 503
