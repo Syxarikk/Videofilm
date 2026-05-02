@@ -1,0 +1,8 @@
+# Ежедневный бэкап app.db в 3:00 утра по локальному времени.
+# Установка: sudo cp /opt/mediasrv/deploy/cron/backup-db.cron /etc/cron.d/mediasrv-backup
+# (имя без расширения, права 644)
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+0 3 * * * mediasrv /opt/mediasrv/scripts/backup_db.sh /opt/mediasrv/app.db /srv/Общее/backups >> /var/log/mediasrv/backup.log 2>&1
