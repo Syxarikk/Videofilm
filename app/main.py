@@ -12,23 +12,28 @@ from app.auth.routes import router as auth_router
 from app.deps import get_db_factory, get_qbittorrent_client
 from app.library.routes import router as library_router
 from app.streaming.routes import api_router as streaming_api_router, progress_router as streaming_progress_router
+from app.streaming.watchdog import watchdog_loop
 from app.torrents.routes import api_router as torrents_api_router, router as torrents_router
 from app.torrents.scanner import scanner_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: запускаем фоновый scanner.
-    # В тестах TestClient() запустит lifespan, но scanner не пугает (он catches все ошибки).
-    task = asyncio.create_task(scanner_loop(get_qbittorrent_client(), get_db_factory(), interval_seconds=10.0))
+    # Startup: запускаем фоновые задачи — scanner и watchdog.
+    # В тестах TestClient() запустит lifespan, но фоновые таски ловят все исключения.
+    scanner_task = asyncio.create_task(
+        scanner_loop(get_qbittorrent_client(), get_db_factory(), interval_seconds=10.0)
+    )
+    watchdog_task = asyncio.create_task(watchdog_loop())
     try:
         yield
     finally:
-        task.cancel()
-        try:
-            await task
-        except (asyncio.CancelledError, Exception):
-            pass
+        for t in (scanner_task, watchdog_task):
+            t.cancel()
+            try:
+                await t
+            except (asyncio.CancelledError, Exception):
+                pass
 
 
 app = FastAPI(title="MediaServer", lifespan=lifespan)
