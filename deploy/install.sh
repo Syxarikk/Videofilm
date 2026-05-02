@@ -14,16 +14,32 @@ fi
 
 echo "==> Step 1/10: Установка системных пакетов"
 apt-get update
+# Python: используем системный python3 (требуется 3.11+).
+# Ubuntu 24.04 (noble) → 3.12, Ubuntu 22.04 (jammy) → 3.10 (нужно поставить python3.11 через deadsnakes PPA вручную).
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
     caddy \
     qbittorrent-nox \
     ffmpeg \
-    python3.11 python3.11-venv python3.11-dev \
+    python3 python3-venv python3-dev \
     fail2ban \
     git \
     sqlite3 \
     curl \
     unattended-upgrades
+
+# Проверка версии Python
+PY_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 11 ]; }; then
+  echo "ERROR: Python 3.11+ required, found Python $PY_VER"
+  echo "На Ubuntu 22.04 установите python3.11 через PPA:"
+  echo "  sudo add-apt-repository ppa:deadsnakes/ppa"
+  echo "  sudo apt-get install python3.11 python3.11-venv python3.11-dev"
+  echo "  затем перезапустите этот скрипт."
+  exit 1
+fi
+echo "    Python $PY_VER ✓"
 
 echo "==> Step 2/10: Создание пользователя mediasrv"
 if ! id mediasrv >/dev/null 2>&1; then
@@ -48,7 +64,7 @@ else
 fi
 
 echo "==> Step 5/10: Установка Python зависимостей в venv"
-sudo -u mediasrv python3.11 -m venv /opt/mediasrv/venv
+sudo -u mediasrv python3 -m venv /opt/mediasrv/venv
 sudo -u mediasrv /opt/mediasrv/venv/bin/pip install --upgrade pip
 sudo -u mediasrv /opt/mediasrv/venv/bin/pip install -r /opt/mediasrv/requirements.txt
 
