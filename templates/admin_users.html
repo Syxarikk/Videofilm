@@ -9,6 +9,7 @@
 {% endif %}
 
 <form method="post" action="/admin/users">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label>Логин нового пользователя <input name="username" required pattern="[a-zA-Z0-9_]{3,32}"></label>
   <label>Сделать админом? <input name="is_admin" type="checkbox" value="1"></label>
   <button type="submit">Создать</button>
@@ -27,6 +28,7 @@
       <td>
         {% if u.id != user.id %}
         <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button type="submit">Удалить</button>
         </form>
         {% endif %}

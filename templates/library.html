@@ -2,11 +2,17 @@
 {% block title %}Библиотека{% endblock %}
 {% block content %}
 <h1>Библиотека</h1>
+<p><a href="/add-torrent">+ Добавить magnet</a> · <a href="/downloads">→ Загрузки</a></p>
 {% if not items %}
-  <p>Здесь пока ничего нет. Добавьте magnet-ссылку в разделе «Загрузки» (появится в Плане 2).</p>
+  <p>Здесь пока ничего нет. Добавьте magnet-ссылку, чтобы начать.</p>
 {% else %}
-  <ul>
-    {% for it in items %}<li>{{ it.title }}</li>{% endfor %}
-  </ul>
+<ul style="list-style:none; padding:0">
+{% for it in items %}
+  <li style="padding:0.5rem 0; border-bottom: 1px solid #eee">
+    <a href="/media/{{ it.id }}">{{ it.title }}</a>
+    <span style="color:#888">— {{ (it.size_bytes / (1024**3)) | round(1) }} ГБ</span>
+  </li>
+{% endfor %}
+</ul>
 {% endif %}
 {% endblock %}

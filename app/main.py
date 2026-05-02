@@ -1,3 +1,6 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -6,9 +9,35 @@ from starlette.requests import Request as StarletteRequest
 
 from app.admin.routes import router as admin_router
 from app.auth.routes import router as auth_router
+from app.deps import get_db_factory, get_qbittorrent_client
+from app.download.routes import api_router as download_api_router
 from app.library.routes import router as library_router
+from app.streaming.routes import api_router as streaming_api_router, progress_router as streaming_progress_router
+from app.streaming.watchdog import watchdog_loop
+from app.torrents.routes import api_router as torrents_api_router, router as torrents_router
+from app.torrents.scanner import scanner_loop
 
-app = FastAPI(title="MediaServer")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: запускаем фоновые задачи — scanner и watchdog.
+    # В тестах TestClient() запустит lifespan, но фоновые таски ловят все исключения.
+    scanner_task = asyncio.create_task(
+        scanner_loop(get_qbittorrent_client(), get_db_factory(), interval_seconds=10.0)
+    )
+    watchdog_task = asyncio.create_task(watchdog_loop())
+    try:
+        yield
+    finally:
+        for t in (scanner_task, watchdog_task):
+            t.cancel()
+            try:
+                await t
+            except (asyncio.CancelledError, Exception):
+                pass
+
+
+app = FastAPI(title="MediaServer", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -31,6 +60,11 @@ app.add_middleware(AuthRedirectMiddleware)
 app.include_router(auth_router)
 app.include_router(library_router)
 app.include_router(admin_router)
+app.include_router(torrents_api_router)
+app.include_router(torrents_router)
+app.include_router(streaming_api_router)
+app.include_router(streaming_progress_router)
+app.include_router(download_api_router)
 
 
 @app.get("/health")

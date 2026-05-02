@@ -25,15 +25,21 @@ def test_login_get_returns_form(client):
     assert "password" in r.text.lower()
 
 
-def test_login_post_wrong_password_returns_401(client, db_factory):
+def test_login_post_wrong_password_returns_401(client, db_factory, csrf_for):
     make_user(db_factory)
-    r = client.post("/login", data={"username": "alice", "password": "wrong"})
+    r = client.post(
+        "/login",
+        data={"username": "alice", "password": "wrong", "csrf_token": csrf_for(None)},
+    )
     assert r.status_code == 401
 
 
-def test_login_post_correct_password_creates_partial_session_and_redirects_to_totp(client, db_factory):
+def test_login_post_correct_password_creates_partial_session_and_redirects_to_totp(client, db_factory, csrf_for):
     make_user(db_factory)
-    r = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    r = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
+    )
     assert r.status_code == 303
     assert r.headers["location"] == "/verify-totp"
     assert "session=" in r.headers.get("set-cookie", "")
@@ -68,34 +74,44 @@ def test_verify_totp_get_requires_partial_session(client):
         assert r.headers["location"] == "/login"
 
 
-def test_verify_totp_full_flow(client, db_factory, monkeypatch):
+def test_verify_totp_full_flow(client, db_factory, monkeypatch, csrf_for):
     monkeypatch.setenv("SESSION_SECRET", "x" * 64)  # совпадает с conftest, ключ для encrypt
     _, secret = make_user_with_totp(db_factory)
 
-    r = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    r = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
+    )
     assert r.status_code == 303
     assert r.headers["location"] == "/verify-totp"
     cookie = r.cookies.get("session")
 
     code = pyotp.TOTP(secret).now()
+    client.cookies.set("session", cookie)
     r2 = client.post(
         "/verify-totp",
-        data={"code": code},
-        cookies={"session": cookie},
+        data={"code": code, "csrf_token": csrf_for(cookie)},
     )
     assert r2.status_code == 303
     assert r2.headers["location"] == "/library"
 
 
-def test_verify_totp_wrong_code_returns_401(client, db_factory):
+def test_verify_totp_wrong_code_returns_401(client, db_factory, csrf_for):
     make_user_with_totp(db_factory)
-    r = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    r = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
+    )
     cookie = r.cookies.get("session")
-    r2 = client.post("/verify-totp", data={"code": "000000"}, cookies={"session": cookie})
+    client.cookies.set("session", cookie)
+    r2 = client.post(
+        "/verify-totp",
+        data={"code": "000000", "csrf_token": csrf_for(cookie)},
+    )
     assert r2.status_code == 401
 
 
-def test_verify_totp_with_backup_code_succeeds(client, db_factory):
+def test_verify_totp_with_backup_code_succeeds(client, db_factory, csrf_for):
     from app.auth.backup_codes import generate_codes, hash_code as bc_hash
     from app.models import BackupCode
 
@@ -106,27 +122,52 @@ def test_verify_totp_with_backup_code_succeeds(client, db_factory):
             s.add(BackupCode(user_id=uid, code_hash=bc_hash(c)))
         s.commit()
 
-    r = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    r = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
+    )
     cookie = r.cookies.get("session")
-    r2 = client.post("/verify-totp", data={"code": codes[0]}, cookies={"session": cookie})
+    r2 = client.post(
+        "/verify-totp",
+        data={"code": codes[0], "csrf_token": csrf_for(cookie)},
+        cookies={"session": cookie},
+    )
     assert r2.status_code == 303
     assert r2.headers["location"] == "/library"
 
     # Тот же код повторно — отвергается.
-    r3 = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    r3 = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
+    )
     cookie3 = r3.cookies.get("session")
-    r4 = client.post("/verify-totp", data={"code": codes[0]}, cookies={"session": cookie3})
+    r4 = client.post(
+        "/verify-totp",
+        data={"code": codes[0], "csrf_token": csrf_for(cookie3)},
+        cookies={"session": cookie3},
+    )
     assert r4.status_code == 401
 
 
-def test_logout_clears_session_and_redirects(client, db_factory):
+def test_logout_clears_session_and_redirects(client, db_factory, csrf_for):
     _, secret = make_user_with_totp(db_factory)
-    r = client.post("/login", data={"username": "alice", "password": "correct-password-12"})
+    r = client.post(
+        "/login",
+        data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)},
+    )
     cookie = r.cookies.get("session")
     code = pyotp.TOTP(secret).now()
-    client.post("/verify-totp", data={"code": code}, cookies={"session": cookie})
+    client.post(
+        "/verify-totp",
+        data={"code": code, "csrf_token": csrf_for(cookie)},
+        cookies={"session": cookie},
+    )
 
-    r2 = client.post("/logout", cookies={"session": cookie})
+    r2 = client.post(
+        "/logout",
+        data={"csrf_token": csrf_for(cookie)},
+        cookies={"session": cookie},
+    )
     assert r2.status_code == 303
     assert r2.headers["location"] == "/login"
 
@@ -135,3 +176,20 @@ def test_logout_clears_session_and_redirects(client, db_factory):
     # удалённая сессия даст 401 (или 303 от middleware-редиректа).
     r3 = client.get("/library", cookies={"session": cookie})
     assert r3.status_code in (303, 401, 404)
+
+
+def test_logout_set_cookie_has_security_flags(client, db_factory, csrf_for):
+    _, secret = make_user_with_totp(db_factory)
+    r = client.post("/login", data={"username": "alice", "password": "correct-password-12", "csrf_token": csrf_for(None)})
+    cookie = r.cookies.get("session")
+    code = pyotp.TOTP(secret).now()
+    client.cookies.set("session", cookie)
+    client.post("/verify-totp", data={"code": code, "csrf_token": csrf_for(cookie)})
+
+    r2 = client.post("/logout", data={"csrf_token": csrf_for(cookie)})
+    sc = r2.headers.get("set-cookie", "")
+    assert "session=" in sc
+    # Cookie должен быть удалён с теми же флагами, что и установлен
+    assert "HttpOnly" in sc or "httponly" in sc.lower()
+    assert "Secure" in sc or "secure" in sc.lower()
+    assert "SameSite=Strict" in sc or "samesite=strict" in sc.lower()

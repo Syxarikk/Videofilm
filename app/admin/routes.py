@@ -4,17 +4,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import require_admin
 from app.auth.passwords import hash_password
-from app.deps import get_db
+from app.csrf import verify_csrf
+from app.deps import get_db, render
 from app.models import User
 
 router = APIRouter(prefix="/admin")
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/users", response_class=HTMLResponse)
@@ -24,7 +23,7 @@ async def list_users(
     db: Annotated[Session, Depends(get_db)],
 ) -> HTMLResponse:
     users = db.scalars(select(User).order_by(User.id)).all()
-    return templates.TemplateResponse(
+    return render(
         request,
         "admin_users.html",
         {"user": admin, "users": users, "created_user": None, "temp_password": None},
@@ -41,12 +40,13 @@ async def create_user(
     admin: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
     is_admin: Annotated[str | None, Form()] = None,
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> HTMLResponse:
     username = username.strip()
     users = db.scalars(select(User).order_by(User.id)).all()
 
     if not USERNAME_RE.match(username):
-        return templates.TemplateResponse(
+        return render(
             request,
             "admin_users.html",
             {
@@ -61,7 +61,7 @@ async def create_user(
 
     existing = db.scalars(select(User).where(User.username == username)).first()
     if existing is not None:
-        return templates.TemplateResponse(
+        return render(
             request,
             "admin_users.html",
             {
@@ -87,7 +87,7 @@ async def create_user(
     db.refresh(new_user)
 
     users = db.scalars(select(User).order_by(User.id)).all()
-    return templates.TemplateResponse(
+    return render(
         request,
         "admin_users.html",
         {
@@ -104,6 +104,7 @@ async def delete_user(
     user_id: int,
     admin: Annotated[User, Depends(require_admin)],
     db: Annotated[Session, Depends(get_db)],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ) -> RedirectResponse:
     if user_id == admin.id:
         raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
