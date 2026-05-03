@@ -1,39 +1,87 @@
 {% extends "base.html" %}
-{% block title %}Управление пользователями{% endblock %}
+{% block title %}Пользователи — MediaServer{% endblock %}
 {% block content %}
-<h1>Пользователи</h1>
+
+<div class="section-header">
+  <h2>Пользователи</h2>
+  <button type="button" class="btn" onclick="document.getElementById('create-modal').style.display='flex'">＋ Создать</button>
+</div>
+
+{% if error %}<div class="error" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
 
 {% if created_user %}
-<p class="error">Создан пользователь <strong>{{ created_user.username }}</strong>.
-Временный пароль: <code>{{ temp_password }}</code> — передайте его пользователю и попросите сразу сменить.</p>
+<div style="padding:1rem 1.2rem; border-radius:var(--radius); background:rgba(16,185,129,0.1); color:var(--text); margin-bottom:1rem; border:1px solid rgba(16,185,129,0.3);">
+  <div style="font-weight:600; margin-bottom:0.4rem;">
+    <span class="status-dot success"></span> Создан пользователь <strong>{{ created_user.username }}</strong>
+  </div>
+  <div style="font-size:0.9rem;">
+    Временный пароль: <code style="background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:var(--radius-sm); user-select:all;">{{ temp_password }}</code>
+  </div>
+  <div style="font-size:0.85rem; color:var(--text-dim); margin-top:0.4rem;">
+    Передайте его пользователю — он сменит пароль при первом входе.
+  </div>
+</div>
 {% endif %}
 
-<form method="post" action="/admin/users">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Логин нового пользователя <input name="username" required pattern="[a-zA-Z0-9_]{3,32}"></label>
-  <label>Сделать админом? <input name="is_admin" type="checkbox" value="1"></label>
-  <button type="submit">Создать</button>
-</form>
-
-<table>
-  <thead><tr><th>ID</th><th>Логин</th><th>Админ?</th><th>Создан</th><th></th></tr></thead>
-  <tbody>
-  {% for u in users %}
+<table class="table">
+  <thead>
     <tr>
-      <td>{{ u.id }}</td>
+      <th style="width:1%">ID</th>
+      <th>Логин</th>
+      <th>Роль</th>
+      <th>Создан</th>
+      <th style="width:1%"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td style="color:var(--text-dim); font-size:0.85rem;">{{ u.id }}</td>
       <td>{{ u.username }}</td>
-      <td>{{ "да" if u.is_admin else "нет" }}</td>
-      <td>{{ u.created_at.strftime("%Y-%m-%d") }}</td>
+      <td>
+        {% if u.is_admin %}
+          <span class="badge-inline" style="color:var(--accent); background:var(--accent-soft);">admin</span>
+        {% else %}
+          <span class="badge-inline">user</span>
+        {% endif %}
+      </td>
+      <td style="color:var(--text-dim); font-size:0.85rem;">{{ u.created_at.strftime('%d.%m.%Y') }}</td>
       <td>
         {% if u.id != user.id %}
-        <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');">
+        <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить пользователя {{ u.username }}?')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit">Удалить</button>
+          <button type="submit" class="btn btn-ghost" style="padding:0.3rem 0.5rem; font-size:0.9rem; color:var(--danger);" title="Удалить">×</button>
         </form>
         {% endif %}
       </td>
     </tr>
-  {% endfor %}
+    {% endfor %}
   </tbody>
 </table>
+
+{# Create-user modal — backend generates temp password, we just submit username + is_admin flag #}
+<div id="create-modal" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <h2>Новый пользователь</h2>
+    <p style="color:var(--text-dim); font-size:0.9rem; margin-bottom:1rem;">
+      Сервер сам сгенерирует временный пароль и покажет его после создания.
+    </p>
+    <form method="post" action="/admin/users" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label for="new_username">Логин</label>
+        <input id="new_username" name="username" autocomplete="off" required pattern="[a-zA-Z0-9_]{3,32}">
+        <small style="color:var(--text-dim); display:block; margin-top:0.3rem;">3–32 символа, латиница / цифры / _</small>
+      </div>
+      <label style="display:flex; align-items:center; gap:0.5rem; font-weight:normal; color:var(--text);">
+        <input type="checkbox" name="is_admin" value="1" style="width:auto;"> Дать права администратора
+      </label>
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('create-modal').style.display='none'">Отмена</button>
+        <button type="submit" class="btn">Создать</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {% endblock %}
