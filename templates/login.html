@@ -1,12 +1,22 @@
 {% extends "base.html" %}
-{% block title %}Вход{% endblock %}
+{% block title %}Вход — MediaServer{% endblock %}
 {% block content %}
-<h1>Вход</h1>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
-<form method="post" action="/login">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Логин <input name="username" autocomplete="username" required></label>
-  <label>Пароль <input name="password" type="password" autocomplete="current-password" required></label>
-  <button type="submit">Войти</button>
-</form>
+<div class="card card-narrow">
+  <h1 style="text-align:center; font-size: 1.6rem;">
+    <span style="color: var(--accent);">▶</span> Вход
+  </h1>
+  {% if error %}<div class="error" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div>
+      <label for="username">Логин</label>
+      <input id="username" name="username" autocomplete="username" autofocus required>
+    </div>
+    <div>
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="btn btn-block">Войти</button>
+  </form>
+</div>
 {% endblock %}
