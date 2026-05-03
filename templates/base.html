@@ -7,22 +7,35 @@
   <link rel="stylesheet" href="/static/style.css">
   {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
   <script src="/static/htmx.min.js" defer></script>
+  {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <header>
-    <a href="/library">MediaServer</a>
-    {% if user %}
-      <nav>
-        <span>{{ user.username }}</span>
-        {% if user.is_admin %}<a href="/admin/users">Пользователи</a>{% endif %}
-        <form method="post" action="/logout" style="display:inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit">Выйти</button>
-        </form>
-      </nav>
-    {% endif %}
+  {% if user %}
+  <header class="topnav">
+    <a href="/library" class="logo" aria-label="MediaServer — главная">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      MEDIASERVER
+    </a>
+    <nav class="main">
+      <a href="/library" class="{% if request.url.path.startswith('/library') or request.url.path.startswith('/media') %}active{% endif %}">Библиотека</a>
+      <a href="/downloads" class="{% if request.url.path.startswith('/downloads') %}active{% endif %}">Загрузки</a>
+      <a href="/add-torrent" class="{% if request.url.path.startswith('/add-torrent') %}active{% endif %}">＋ Добавить</a>
+      {% if user.is_admin %}
+      <a href="/admin/users" class="{% if request.url.path.startswith('/admin/users') %}active{% endif %}">Пользователи</a>
+      <a href="/admin/health" class="{% if request.url.path.startswith('/admin/health') %}active{% endif %}">Здоровье</a>
+      {% endif %}
+    </nav>
+    <div class="user-menu">
+      <div class="avatar" aria-hidden="true">{{ user.username[0]|upper }}</div>
+      <span>{{ user.username }}</span>
+      <form method="post" action="/logout" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-ghost" style="padding:0.3rem 0.6rem;font-size:0.8rem;">Выйти</button>
+      </form>
+    </div>
   </header>
-  <main>
+  {% endif %}
+  <main{% if not user %} class="centered"{% endif %}>
     {% block content %}{% endblock %}
   </main>
 </body>
