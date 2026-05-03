@@ -82,7 +82,6 @@ def create_user(
         username=username,
         password_hash=hash_password(temp_password),
         must_change_password=True,
-        totp_enabled=False,
         is_admin=bool(is_admin),
     )
     db.add(new_user)

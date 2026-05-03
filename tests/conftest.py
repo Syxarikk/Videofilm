@@ -26,7 +26,6 @@ def env(monkeypatch):
     monkeypatch.setenv("QBITTORRENT_URL", "http://127.0.0.1:8080")
     monkeypatch.setenv("QBITTORRENT_USERNAME", "admin")
     monkeypatch.setenv("QBITTORRENT_PASSWORD", "secret")
-    monkeypatch.setenv("TOTP_ISSUER", "TestSrv")
 
 
 @pytest.fixture

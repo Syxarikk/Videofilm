@@ -16,14 +16,13 @@
 </form>
 
 <table>
-  <thead><tr><th>ID</th><th>Логин</th><th>Админ?</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
+  <thead><tr><th>ID</th><th>Логин</th><th>Админ?</th><th>Создан</th><th></th></tr></thead>
   <tbody>
   {% for u in users %}
     <tr>
       <td>{{ u.id }}</td>
       <td>{{ u.username }}</td>
       <td>{{ "да" if u.is_admin else "нет" }}</td>
-      <td>{{ "вкл" if u.totp_enabled else "выкл" }}</td>
       <td>{{ u.created_at.strftime("%Y-%m-%d") }}</td>
       <td>
         {% if u.id != user.id %}

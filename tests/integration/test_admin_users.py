@@ -1,19 +1,14 @@
 import secrets
 
-import pyotp
-
 from app.auth.passwords import hash_password
-from app.auth.totp import encrypt_secret, _derive_key
 from app.models import User
 
 
 def make_admin_logged_in(client, db_factory, csrf_for):
-    secret = pyotp.random_base32()
     with db_factory() as s:
         u = User(
             username="root", password_hash=hash_password("admin-password-12"),
-            must_change_password=False, totp_enabled=True, is_admin=True,
-            totp_secret_encrypted=encrypt_secret(secret, _derive_key("x" * 64)),
+            must_change_password=False, is_admin=True,
         )
         s.add(u); s.commit()
     r = client.post(
@@ -21,22 +16,14 @@ def make_admin_logged_in(client, db_factory, csrf_for):
         data={"username": "root", "password": "admin-password-12", "csrf_token": csrf_for(None)},
     )
     cookie = r.cookies.get("session")
-    code = pyotp.TOTP(secret).now()
-    client.post(
-        "/verify-totp",
-        data={"code": code, "csrf_token": csrf_for(cookie)},
-        cookies={"session": cookie},
-    )
     return cookie
 
 
 def make_regular_logged_in(client, db_factory, csrf_for):
-    secret = pyotp.random_base32()
     with db_factory() as s:
         u = User(
             username="alice", password_hash=hash_password("user-password-12"),
-            must_change_password=False, totp_enabled=True, is_admin=False,
-            totp_secret_encrypted=encrypt_secret(secret, _derive_key("x" * 64)),
+            must_change_password=False, is_admin=False,
         )
         s.add(u); s.commit()
     r = client.post(
@@ -44,12 +31,6 @@ def make_regular_logged_in(client, db_factory, csrf_for):
         data={"username": "alice", "password": "user-password-12", "csrf_token": csrf_for(None)},
     )
     cookie = r.cookies.get("session")
-    code = pyotp.TOTP(secret).now()
-    client.post(
-        "/verify-totp",
-        data={"code": code, "csrf_token": csrf_for(cookie)},
-        cookies={"session": cookie},
-    )
     return cookie
 
 

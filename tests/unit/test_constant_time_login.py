@@ -17,7 +17,7 @@ def test_login_timing_with_unknown_user_uses_bcrypt(client, db_factory, csrf_for
     from app.models import User
     with db_factory() as s:
         s.add(User(username="alice", password_hash=hash_password("correct-password-12"),
-                   must_change_password=False, totp_enabled=True, totp_secret_encrypted="x"))
+                   must_change_password=False))
         s.commit()
 
     # Unknown user

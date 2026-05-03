@@ -32,7 +32,6 @@ def create_admin(session: Session, *, username: str, password: str) -> User:
         username=username,
         password_hash=hash_password(password),
         must_change_password=True,
-        totp_enabled=False,
         is_admin=True,
     )
     session.add(u)
@@ -59,7 +58,7 @@ def main() -> int:
         except ValueError as e:
             print(f"Ошибка: {e}", file=sys.stderr)
             return 1
-    print(f"Создан админ {u.username!r} (id={u.id}). При первом входе ему предложат сменить пароль и активировать 2FA.")
+    print(f"Создан админ {u.username!r} (id={u.id}). При первом входе ему предложат сменить пароль.")
     return 0
 
 

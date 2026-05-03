@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     qbittorrent_url: str
     qbittorrent_username: str
     qbittorrent_password: str
-    totp_issuer: str = "MediaServer"
     hls_work_root: str = _tempfile.gettempdir()
 
     @field_validator("session_secret")
