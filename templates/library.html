@@ -1,18 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Библиотека{% endblock %}
+{% block title %}Библиотека — MediaServer{% endblock %}
 {% block content %}
-<h1>Библиотека</h1>
-<p><a href="/add-torrent">+ Добавить magnet</a> · <a href="/downloads">→ Загрузки</a></p>
-{% if not items %}
-  <p>Здесь пока ничего нет. Добавьте magnet-ссылку, чтобы начать.</p>
+
+{% if items %}
+  {# Hero — самый свежий файл (items[0] — DESC-сортировка из роута) #}
+  {% set hero = items[0] %}
+  <div class="hero" style="background: linear-gradient(135deg, hsl({{ hero.id * 47 % 360 }}, 50%, 25%), var(--surface));">
+    <div class="hero-content">
+      <div class="hero-label">Недавно добавлено</div>
+      <h1>{{ hero.title }}</h1>
+      <div class="hero-meta">
+        <span>{{ (hero.size_bytes / 1024 / 1024 / 1024)|round(1) }} ГБ</span>
+        <span class="dot"></span>
+        <span>{{ hero.added_at.strftime('%d.%m.%Y') }}</span>
+      </div>
+      <div class="actions">
+        <a href="/media/{{ hero.id }}" class="btn">▶ Смотреть</a>
+        <a href="/api/download/{{ hero.id }}" class="btn btn-secondary">⬇ Скачать</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <h2>Вся библиотека</h2>
+    <span style="color:var(--text-dim); font-size:0.85rem;">{{ items|length }} файлов</span>
+  </div>
+  <div class="grid">
+    {% for item in items %}
+    <a href="/media/{{ item.id }}" class="poster">
+      <div class="art" style="background: linear-gradient(180deg, hsl({{ item.id * 47 % 360 }}, 50%, 30%), var(--bg));"></div>
+      <div class="overlay">
+        <div class="title">{{ item.title }}</div>
+        <div class="year">{{ (item.size_bytes / 1024 / 1024 / 1024)|round(1) }} ГБ</div>
+      </div>
+      {% if loop.index <= 3 %}<div class="badge">NEW</div>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
 {% else %}
-<ul style="list-style:none; padding:0">
-{% for it in items %}
-  <li style="padding:0.5rem 0; border-bottom: 1px solid #eee">
-    <a href="/media/{{ it.id }}">{{ it.title }}</a>
-    <span style="color:#888">— {{ (it.size_bytes / (1024**3)) | round(1) }} ГБ</span>
-  </li>
-{% endfor %}
-</ul>
+  <div class="empty">
+    <h3>Библиотека пуста</h3>
+    <p>Добавьте первый торрент — magnet-ссылку.</p>
+    <a href="/add-torrent" class="btn">＋ Добавить торрент</a>
+  </div>
 {% endif %}
+
 {% endblock %}
