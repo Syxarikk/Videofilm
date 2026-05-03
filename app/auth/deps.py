@@ -34,7 +34,7 @@ def get_current_user(request: Request, db: Annotated[Session, Depends(get_db)]) 
 
 
 def get_current_user_partial(request: Request, db: Annotated[Session, Depends(get_db)]) -> User:
-    """Allows partial sessions (post-password, pre-2FA)."""
+    """Allows partial sessions (used during the must-change-password flow)."""
     token = request.cookies.get(SESSION_COOKIE)
     return _resolve_current_user(db, token, allow_partial=True)
 
