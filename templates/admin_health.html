@@ -1,43 +1,82 @@
 {% extends "base.html" %}
-{% block title %}Здоровье сервера{% endblock %}
+{% block title %}Здоровье сервера — MediaServer{% endblock %}
 {% block content %}
-<h1>Здоровье сервера</h1>
 
-<h2>Диск</h2>
-{% if disk_root.error %}
-  <p class="error">Ошибка: {{ disk_root.error }}</p>
-{% else %}
-  <p>
-    Свободно: <strong>{{ disk_root.free_gb }} ГБ</strong> из {{ disk_root.total_gb }} ГБ
-    (занято {{ disk_root.percent_used }}%)
-  </p>
-{% endif %}
+<div class="section-header">
+  <h2>Здоровье сервера</h2>
+</div>
 
-<h2>qBittorrent</h2>
-{% if qb.reachable %}
-  <p>✅ Доступен. Активных торрентов: <strong>{{ qb.active_torrents }}</strong></p>
-{% else %}
-  <p class="error">❌ Не отвечает: {{ qb.error }}</p>
-{% endif %}
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; margin-bottom:2rem;">
 
-<h2>Активные стримы (ffmpeg)</h2>
-{% if not streams %}
-  <p>Нет активных стримов.</p>
-{% else %}
-<table>
-  <thead><tr><th>media_id</th><th>user_id</th><th>work_dir</th><th>живой?</th></tr></thead>
+  {# Диск #}
+  <div class="card">
+    <div style="color:var(--text-dim); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem;">Диск</div>
+    {% if disk_root.error %}
+      <div class="error">{{ disk_root.error }}</div>
+    {% else %}
+      <div style="font-size:1.8rem; font-weight:700; letter-spacing:-0.02em; margin-bottom:0.4rem;">{{ disk_root.percent_used }}%</div>
+      <div class="progress-bar {% if disk_root.percent_used > 85 %}warning{% endif %}" style="margin-bottom:0.5rem;">
+        <div style="width: {{ disk_root.percent_used }}%"></div>
+      </div>
+      <div style="color:var(--text-dim); font-size:0.85rem;">
+        Свободно <strong style="color:var(--text);">{{ disk_root.free_gb }} ГБ</strong> из {{ disk_root.total_gb }} ГБ
+      </div>
+    {% endif %}
+  </div>
+
+  {# qBittorrent #}
+  <div class="card">
+    <div style="color:var(--text-dim); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem;">qBittorrent</div>
+    {% if qb.reachable %}
+      <div style="font-size:1.2rem; font-weight:700; margin-bottom:0.4rem;">
+        <span class="status-dot success"></span> Доступен
+      </div>
+      <div style="color:var(--text-dim); font-size:0.85rem;">
+        Активных торрентов: <strong style="color:var(--text);">{{ qb.active_torrents }}</strong>
+      </div>
+    {% else %}
+      <div style="font-size:1.2rem; font-weight:700; margin-bottom:0.4rem;">
+        <span class="status-dot danger"></span> Не отвечает
+      </div>
+      <div style="color:var(--danger); font-size:0.85rem;">{{ qb.error }}</div>
+    {% endif %}
+  </div>
+
+  {# Активные стримы (счётчик) #}
+  <div class="card">
+    <div style="color:var(--text-dim); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem;">Активные стримы</div>
+    <div style="font-size:1.8rem; font-weight:700; letter-spacing:-0.02em; margin-bottom:0.4rem;">{{ streams|length }}</div>
+    <div style="color:var(--text-dim); font-size:0.85rem;">ffmpeg-процессов</div>
+  </div>
+
+</div>
+
+{# Подробности по стримам — таблица только если есть #}
+{% if streams %}
+<div class="section-header"><h2>Стримы (детально)</h2></div>
+<table class="table">
+  <thead>
+    <tr>
+      <th>media_id</th>
+      <th>user_id</th>
+      <th>work_dir</th>
+      <th style="width:1%"></th>
+    </tr>
+  </thead>
   <tbody>
     {% for s in streams %}
     <tr>
       <td>{{ s.media_id }}</td>
       <td>{{ s.user_id }}</td>
-      <td><code>{{ s.work_dir }}</code></td>
-      <td>{{ "да" if s.alive else "нет" }}</td>
+      <td><code style="font-size:0.8rem; color:var(--text-dim);">{{ s.work_dir }}</code></td>
+      <td>
+        <span class="status-dot {% if s.alive %}success{% else %}dim{% endif %}"></span>
+        <span style="font-size:0.85rem; color:var(--text-dim);">{{ "жив" if s.alive else "завершён" }}</span>
+      </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 {% endif %}
 
-<p><a href="/admin/users">← Пользователи</a></p>
 {% endblock %}
