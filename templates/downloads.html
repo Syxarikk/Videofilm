@@ -1,44 +1,79 @@
 {% extends "base.html" %}
-{% block title %}Загрузки{% endblock %}
+{% block title %}Загрузки — MediaServer{% endblock %}
 {% block content %}
-<h1>Активные загрузки</h1>
-<p><a href="/add-torrent">+ Добавить magnet</a> · <a href="/library">→ Библиотека</a></p>
+
+<div class="section-header">
+  <h2>Активные загрузки</h2>
+  <a href="/add-torrent">＋ Добавить</a>
+</div>
+
 <div id="torrents-table"
      hx-get="/api/torrents/status"
      hx-trigger="load, every 2s"
-     hx-swap="innerHTML"
-     hx-ext="json-enc">
-  Загрузка…
+     hx-swap="innerHTML">
+  <p style="color:var(--text-dim);">Загрузка…</p>
 </div>
 
 <script>
-// Простой обработчик: hx-get вернёт JSON, мы рендерим его в таблицу руками.
+function dotClass(state) {
+  const s = (state || '').toLowerCase();
+  if (s.includes('download') || s === 'downloading') return 'success';
+  if (s.includes('pause') || s === 'paused') return 'warning';
+  if (s.includes('error') || s === 'missingfiles') return 'danger';
+  return 'dim';
+}
+
 document.body.addEventListener('htmx:afterRequest', (e) => {
   if (e.detail.requestConfig.path !== '/api/torrents/status') return;
+  const target = document.getElementById('torrents-table');
   if (!e.detail.successful) {
-    document.getElementById('torrents-table').innerHTML = '<p class="error">qBittorrent недоступен</p>';
+    target.innerHTML = '<div class="error">qBittorrent недоступен</div>';
     return;
   }
   const data = JSON.parse(e.detail.xhr.responseText);
   if (data.length === 0) {
-    document.getElementById('torrents-table').innerHTML = '<p>Активных загрузок нет.</p>';
+    target.innerHTML = `
+      <div class="empty">
+        <h3>Нет активных загрузок</h3>
+        <p>Все скачанные файлы попадают в библиотеку.</p>
+        <a href="/add-torrent" class="btn">＋ Добавить торрент</a>
+      </div>`;
     return;
   }
   const rows = data.map(t => `
     <tr>
-      <td>${t.name}</td>
-      <td>${t.progress_percent}%</td>
-      <td>${t.speed_human}</td>
-      <td>${t.eta_human}</td>
-      <td>${t.state}</td>
+      <td><span class="status-dot ${dotClass(t.state)}"></span></td>
+      <td>${escapeHtml(t.name)}</td>
+      <td>
+        <div class="progress-bar ${t.progress_percent >= 100 ? 'success' : ''}">
+          <div style="width: ${t.progress_percent}%"></div>
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.2rem;">${t.progress_percent}%</div>
+      </td>
+      <td>${escapeHtml(t.speed_human || '—')}</td>
+      <td>${escapeHtml(t.eta_human || '—')}</td>
+      <td><span class="badge-inline">${escapeHtml(t.state || '')}</span></td>
     </tr>
   `).join('');
-  document.getElementById('torrents-table').innerHTML = `
-    <table>
-      <thead><tr><th>Название</th><th>%</th><th>Скорость</th><th>ETA</th><th>Статус</th></tr></thead>
+  target.innerHTML = `
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:1%"></th>
+          <th>Название</th>
+          <th style="width:30%">Прогресс</th>
+          <th style="width:12%">Скорость</th>
+          <th style="width:10%">ETA</th>
+          <th style="width:10%">Статус</th>
+        </tr>
+      </thead>
       <tbody>${rows}</tbody>
-    </table>
-  `;
+    </table>`;
 });
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 </script>
+
 {% endblock %}
