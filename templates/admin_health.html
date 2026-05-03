@@ -10,15 +10,15 @@
 
   {# Диск #}
   <div class="card">
-    <div style="color:var(--text-dim); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem;">Диск</div>
+    <div class="metric-label">Диск</div>
     {% if disk_root.error %}
       <div class="error">{{ disk_root.error }}</div>
     {% else %}
-      <div style="font-size:1.8rem; font-weight:700; letter-spacing:-0.02em; margin-bottom:0.4rem;">{{ disk_root.percent_used }}%</div>
+      <div class="metric-value">{{ disk_root.percent_used }}%</div>
       <div class="progress-bar {% if disk_root.percent_used > 85 %}warning{% endif %}" style="margin-bottom:0.5rem;">
         <div style="width: {{ disk_root.percent_used }}%"></div>
       </div>
-      <div style="color:var(--text-dim); font-size:0.85rem;">
+      <div class="metric-foot">
         Свободно <strong style="color:var(--text);">{{ disk_root.free_gb }} ГБ</strong> из {{ disk_root.total_gb }} ГБ
       </div>
     {% endif %}
@@ -26,16 +26,16 @@
 
   {# qBittorrent #}
   <div class="card">
-    <div style="color:var(--text-dim); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem;">qBittorrent</div>
+    <div class="metric-label">qBittorrent</div>
     {% if qb.reachable %}
-      <div style="font-size:1.2rem; font-weight:700; margin-bottom:0.4rem;">
+      <div class="metric-value small">
         <span class="status-dot success"></span> Доступен
       </div>
-      <div style="color:var(--text-dim); font-size:0.85rem;">
+      <div class="metric-foot">
         Активных торрентов: <strong style="color:var(--text);">{{ qb.active_torrents }}</strong>
       </div>
     {% else %}
-      <div style="font-size:1.2rem; font-weight:700; margin-bottom:0.4rem;">
+      <div class="metric-value small">
         <span class="status-dot danger"></span> Не отвечает
       </div>
       <div style="color:var(--danger); font-size:0.85rem;">{{ qb.error }}</div>
@@ -44,9 +44,9 @@
 
   {# Активные стримы (счётчик) #}
   <div class="card">
-    <div style="color:var(--text-dim); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.6rem;">Активные стримы</div>
-    <div style="font-size:1.8rem; font-weight:700; letter-spacing:-0.02em; margin-bottom:0.4rem;">{{ streams|length }}</div>
-    <div style="color:var(--text-dim); font-size:0.85rem;">ffmpeg-процессов</div>
+    <div class="metric-label">Активные стримы</div>
+    <div class="metric-value">{{ streams|length }}</div>
+    <div class="metric-foot">ffmpeg-процессов</div>
   </div>
 
 </div>

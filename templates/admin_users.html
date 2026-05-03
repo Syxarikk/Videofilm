@@ -10,14 +10,14 @@
 {% if error %}<div class="error" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
 
 {% if created_user %}
-<div style="padding:1rem 1.2rem; border-radius:var(--radius); background:rgba(16,185,129,0.1); color:var(--text); margin-bottom:1rem; border:1px solid rgba(16,185,129,0.3);">
-  <div style="font-weight:600; margin-bottom:0.4rem;">
+<div class="notice success">
+  <div class="title">
     <span class="status-dot success"></span> Создан пользователь <strong>{{ created_user.username }}</strong>
   </div>
-  <div style="font-size:0.9rem;">
+  <div class="body">
     Временный пароль: <code style="background:var(--surface-2); padding:0.15rem 0.4rem; border-radius:var(--radius-sm); user-select:all;">{{ temp_password }}</code>
   </div>
-  <div style="font-size:0.85rem; color:var(--text-dim); margin-top:0.4rem;">
+  <div class="foot">
     Передайте его пользователю — он сменит пароль при первом входе.
   </div>
 </div>
@@ -40,7 +40,7 @@
       <td>{{ u.username }}</td>
       <td>
         {% if u.is_admin %}
-          <span class="badge-inline" style="color:var(--accent); background:var(--accent-soft);">admin</span>
+          <span class="badge-inline accent">admin</span>
         {% else %}
           <span class="badge-inline">user</span>
         {% endif %}

@@ -354,6 +354,45 @@ label { font-weight: 500; font-size: 0.85rem; color: var(--text-dim); display: b
 }
 .badge-inline.success { background: rgba(16,185,129,0.15); color: var(--success); }
 .badge-inline.danger { background: rgba(239,68,68,0.15); color: var(--danger); }
+.badge-inline.accent { background: var(--accent-soft); color: var(--accent); }
+
+/* === Metric card (admin/health, future dashboards) === */
+.metric-label {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+.metric-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4rem;
+}
+.metric-value.small { font-size: 1.2rem; }
+.metric-foot { color: var(--text-dim); font-size: 0.85rem; }
+
+/* === Inline notice (success / danger banner inside content) === */
+.notice {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.notice.success {
+  background: rgba(16,185,129,0.1);
+  border-color: rgba(16,185,129,0.3);
+}
+.notice.danger {
+  background: rgba(239,68,68,0.1);
+  border-color: rgba(239,68,68,0.3);
+}
+.notice .title { font-weight: 600; margin-bottom: 0.4rem; }
+.notice .body { font-size: 0.9rem; }
+.notice .foot { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.4rem; }
 
 /* === Modal === */
 .modal-backdrop {
