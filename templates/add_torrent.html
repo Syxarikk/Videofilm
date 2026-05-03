@@ -1,14 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Добавить торрент{% endblock %}
+{% block title %}Добавить торрент — MediaServer{% endblock %}
 {% block content %}
-<h1>Добавить magnet-ссылку</h1>
-<p>Сервер скачает торрент и появится в библиотеке после загрузки.</p>
-<form method="post" action="/api/torrents">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Magnet-ссылка<br>
-    <input name="magnet" placeholder="magnet:?xt=urn:btih:..." required style="width: 100%; max-width: 600px">
-  </label>
-  <button type="submit">Добавить</button>
-</form>
-<p><a href="/downloads">→ Активные загрузки</a> · <a href="/library">← Библиотека</a></p>
+
+<div class="card" style="max-width: 640px; margin: 0 auto;">
+  <h1 style="font-size: 1.4rem; letter-spacing: -0.02em; margin-bottom: 0.5rem;">Добавить торрент</h1>
+  <p style="color:var(--text-dim); font-size:0.9rem; margin-bottom: 1.2rem;">
+    Сервер скачает торрент и он появится в библиотеке после загрузки.
+  </p>
+
+  <form method="post" action="/api/torrents" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div>
+      <label for="magnet">Magnet-ссылка</label>
+      <textarea id="magnet" name="magnet" rows="3" placeholder="magnet:?xt=urn:btih:..." required style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size:0.85rem;"></textarea>
+    </div>
+    <button type="submit" class="btn">＋ Добавить</button>
+  </form>
+
+  <p style="margin-top: 1.5rem; font-size:0.85rem;">
+    <a href="/downloads">→ Активные загрузки</a>
+    &nbsp;·&nbsp;
+    <a href="/library" style="color:var(--text-dim);">← Библиотека</a>
+  </p>
+</div>
+
 {% endblock %}
