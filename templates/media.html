@@ -1,43 +1,70 @@
 {% extends "base.html" %}
-{% block title %}{{ item.title }}{% endblock %}
-{% block content %}
-<h1>{{ item.title }}</h1>
-<p style="color:#888">{{ (item.size_bytes / (1024**3)) | round(1) }} ГБ</p>
-
-<video id="player" controls preload="metadata" style="width:100%; max-width:960px; background:#000"></video>
-
-<p style="margin-top:1rem">
-  <a href="/api/download/{{ item.id }}" class="button">Скачать оригинал</a>
-  <form method="post" action="/api/media/{{ item.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить «{{ item.title }}»?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit">Удалить</button>
-  </form>
-  <a href="/library">← Библиотека</a>
-</p>
-
+{% block title %}{{ item.title }} — MediaServer{% endblock %}
+{% block head_extra %}
 <script src="/static/hls.min.js"></script>
+{% endblock %}
+{% block content %}
+
+<div class="hero" style="background: linear-gradient(135deg, hsl({{ item.id * 47 % 360 }}, 50%, 28%), var(--surface));">
+  <div class="hero-content">
+    <div class="hero-label">Файл</div>
+    <h1>{{ item.title }}</h1>
+    <div class="hero-meta">
+      <span>{{ (item.size_bytes / 1024 / 1024 / 1024)|round(1) }} ГБ</span>
+      <span class="dot"></span>
+      <span>Добавлен {{ item.added_at.strftime('%d.%m.%Y') }}</span>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" onclick="document.getElementById('player-card').scrollIntoView({behavior:'smooth'}); document.getElementById('player').play()">▶ Смотреть</button>
+      <a href="/api/download/{{ item.id }}" class="btn btn-secondary">⬇ Скачать оригинал</a>
+      <button type="button" class="btn btn-danger" onclick="document.getElementById('confirm-delete').style.display='flex'">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<div id="player-card" class="card" style="padding:0; overflow:hidden; background:#000; margin-bottom:1.5rem;">
+  <video id="player" controls preload="metadata" playsinline style="width:100%; max-height:80vh; display:block; background:#000;"></video>
+</div>
+
+<p><a href="/library" style="color:var(--text-dim);">← Библиотека</a></p>
+
+{# Delete confirmation modal — hidden by default via inline display:none #}
+<div id="confirm-delete" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <h2>Удалить «{{ item.title }}»?</h2>
+    <p style="color:var(--text-dim);">Файл будет удалён с диска. Действие необратимо.</p>
+    <form method="post" action="/api/media/{{ item.id }}/delete" class="actions">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('confirm-delete').style.display='none'">Отмена</button>
+      <button type="submit" class="btn btn-danger">Удалить</button>
+    </form>
+  </div>
+</div>
+
 <script>
 (function() {
   const video = document.getElementById('player');
   const src = '/api/stream/{{ item.id }}/playlist.m3u8';
 
-  if (Hls.isSupported()) {
+  if (window.Hls && Hls.isSupported()) {
     const hls = new Hls();
     hls.loadSource(src);
     hls.attachMedia(video);
     hls.on(Hls.Events.ERROR, (e, data) => {
       console.error("HLS error:", data);
       if (data.fatal) {
-        document.querySelector('main').innerHTML += '<p class="error">Поток упал. Обновите страницу.</p>';
+        document.querySelector('main').insertAdjacentHTML('beforeend',
+          '<div class="error" style="margin-top:1rem">Поток упал. Обновите страницу.</div>');
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari/iOS — нативная поддержка HLS
     video.src = src;
   } else {
-    document.querySelector('main').innerHTML += '<p class="error">Браузер не поддерживает HLS. Скачайте оригинал.</p>';
+    document.querySelector('main').insertAdjacentHTML('beforeend',
+      '<div class="error" style="margin-top:1rem">Браузер не поддерживает HLS. Скачайте оригинал.</div>');
   }
 
+  // Прогресс просмотра — раз в 10 секунд, как было
   setInterval(() => {
     if (video.paused || video.ended || isNaN(video.currentTime)) return;
     fetch('/api/progress', {
@@ -48,4 +75,5 @@
   }, 10000);
 })();
 </script>
+
 {% endblock %}
