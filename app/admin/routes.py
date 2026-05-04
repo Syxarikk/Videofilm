@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.deps import require_admin
 from app.auth.passwords import hash_password
+from app.config import get_settings
 from app.csrf import verify_csrf
 from app.deps import get_db, get_qbittorrent_client, render
 from app.models import User
@@ -124,7 +125,7 @@ def health_page(
     admin: Annotated[User, Depends(require_admin)],
     qb: Annotated[QBittorrentClient, Depends(get_qbittorrent_client)],
 ):
-    # Диск
+    # Диск (системный, корневой)
     try:
         d_root = shutil.disk_usage("/")
         disk_root = {
@@ -134,6 +135,19 @@ def health_page(
         }
     except Exception as e:
         disk_root = {"error": str(e)}
+
+    # Диск медиа (тот, на котором лежит MEDIA_ROOT)
+    settings = get_settings()
+    try:
+        d_media = shutil.disk_usage(settings.media_root)
+        disk_media = {
+            "path": settings.media_root,
+            "free_gb": round(d_media.free / (1024 ** 3), 1),
+            "total_gb": round(d_media.total / (1024 ** 3), 1),
+            "percent_used": round((1 - d_media.free / d_media.total) * 100, 1),
+        }
+    except Exception as e:
+        disk_media = {"path": settings.media_root, "error": str(e)}
 
     # qBittorrent
     try:
@@ -156,6 +170,7 @@ def health_page(
     return render(request, "admin_health.html", {
         "user": admin,
         "disk_root": disk_root,
+        "disk_media": disk_media,
         "qb": qb_status,
         "streams": streams,
     })

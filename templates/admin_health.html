@@ -14,7 +14,7 @@
 
 <section class="metrics-grid">
   <article class="metric-card">
-    <p class="eyebrow">Диск</p>
+    <p class="eyebrow">Системный диск</p>
     {% if disk_root.error %}
       <p class="error">Ошибка: {{ disk_root.error }}</p>
     {% else %}
@@ -22,6 +22,19 @@
       <p>Свободно из {{ disk_root.total_gb }} ГБ</p>
       <div class="progress-track"><span style="width:{{ disk_root.percent_used }}%"></span></div>
       <p>Занято {{ disk_root.percent_used }}%</p>
+    {% endif %}
+  </article>
+
+  <article class="metric-card">
+    <p class="eyebrow">Хранилище медиа</p>
+    {% if disk_media.error %}
+      <p class="error">Ошибка: {{ disk_media.error }}</p>
+      <p><code>{{ disk_media.path }}</code></p>
+    {% else %}
+      <h2>{{ disk_media.free_gb }} ГБ</h2>
+      <p>Свободно из {{ disk_media.total_gb }} ГБ</p>
+      <div class="progress-track"><span style="width:{{ disk_media.percent_used }}%"></span></div>
+      <p>Занято {{ disk_media.percent_used }}% &middot; <code>{{ disk_media.path }}</code></p>
     {% endif %}
   </article>
 

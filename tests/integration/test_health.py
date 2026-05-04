@@ -39,3 +39,7 @@ def test_admin_health_renders_for_admin(client, db_factory, csrf_for):
     assert "qbittorrent" in r.text.lower() or "qbt" in r.text.lower()
     assert "диск" in r.text.lower() or "disk" in r.text.lower()
     assert "стрим" in r.text.lower() or "stream" in r.text.lower()
+    # Карточка медиа-хранилища (отдельно от системного диска)
+    assert "хранилище медиа" in r.text.lower()
+    # MEDIA_ROOT из conftest
+    assert "/tmp/media" in r.text
