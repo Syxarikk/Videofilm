@@ -8,21 +8,33 @@
   {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
   <script src="/static/htmx.min.js" defer></script>
 </head>
-<body>
-  <header>
-    <a href="/library">MediaServer</a>
+<body class="{% if user %}app-body{% else %}auth-body{% endif %}">
+  <header class="topbar">
+    <a class="brand" href="/library" aria-label="MediaServer">
+      <span class="brand-mark">MS</span>
+      <span>
+        <strong>MediaServer</strong>
+        <small>Домашний киноцентр</small>
+      </span>
+    </a>
     {% if user %}
-      <nav>
-        <span>{{ user.username }}</span>
+      <nav class="topnav" aria-label="Основная навигация">
+        <a href="/library">Библиотека</a>
+        <a href="/downloads">Загрузки</a>
+        <a href="/add-torrent">Добавить</a>
         {% if user.is_admin %}<a href="/admin/users">Пользователи</a>{% endif %}
-        <form method="post" action="/logout" style="display:inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit">Выйти</button>
-        </form>
+        {% if user.is_admin %}<a href="/admin/health">Сервер</a>{% endif %}
       </nav>
+      <div class="account">
+        <span class="user-pill">{{ user.username }}</span>
+        <form class="nav-logout" method="post" action="/logout">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="button ghost compact" type="submit">Выйти</button>
+        </form>
+      </div>
     {% endif %}
   </header>
-  <main>
+  <main class="page">
     {% block content %}{% endblock %}
   </main>
 </body>

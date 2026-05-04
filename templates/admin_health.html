@@ -1,43 +1,67 @@
 {% extends "base.html" %}
 {% block title %}Здоровье сервера{% endblock %}
 {% block content %}
-<h1>Здоровье сервера</h1>
+<section class="hero-panel compact-hero">
+  <div>
+    <p class="eyebrow">Наблюдение</p>
+    <h1>Здоровье сервера</h1>
+    <p class="lead">Короткая панель состояния диска, qBittorrent и активных ffmpeg-стримов.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="/admin/users">Пользователи</a>
+  </div>
+</section>
 
-<h2>Диск</h2>
-{% if disk_root.error %}
-  <p class="error">Ошибка: {{ disk_root.error }}</p>
-{% else %}
-  <p>
-    Свободно: <strong>{{ disk_root.free_gb }} ГБ</strong> из {{ disk_root.total_gb }} ГБ
-    (занято {{ disk_root.percent_used }}%)
-  </p>
-{% endif %}
+<section class="metrics-grid">
+  <article class="metric-card">
+    <p class="eyebrow">Диск</p>
+    {% if disk_root.error %}
+      <p class="error">Ошибка: {{ disk_root.error }}</p>
+    {% else %}
+      <h2>{{ disk_root.free_gb }} ГБ</h2>
+      <p>Свободно из {{ disk_root.total_gb }} ГБ</p>
+      <div class="progress-track"><span style="width:{{ disk_root.percent_used }}%"></span></div>
+      <p>Занято {{ disk_root.percent_used }}%</p>
+    {% endif %}
+  </article>
 
-<h2>qBittorrent</h2>
-{% if qb.reachable %}
-  <p>✅ Доступен. Активных торрентов: <strong>{{ qb.active_torrents }}</strong></p>
-{% else %}
-  <p class="error">❌ Не отвечает: {{ qb.error }}</p>
-{% endif %}
+  <article class="metric-card">
+    <p class="eyebrow">qBittorrent</p>
+    {% if qb.reachable %}
+      <h2>{{ qb.active_torrents }}</h2>
+      <p><span class="status-chip done">доступен</span> активных торрентов</p>
+    {% else %}
+      <p class="error">Не отвечает: {{ qb.error }}</p>
+    {% endif %}
+  </article>
+</section>
 
-<h2>Активные стримы (ffmpeg)</h2>
+<section class="section-head">
+  <div>
+    <p class="eyebrow">ffmpeg</p>
+    <h2>Активные стримы</h2>
+  </div>
+</section>
 {% if not streams %}
-  <p>Нет активных стримов.</p>
+  <section class="empty-state small">
+    <h2>Нет активных стримов</h2>
+    <p>Когда кто-то начнет просмотр, ffmpeg-процесс появится в этой таблице.</p>
+  </section>
 {% else %}
-<table>
-  <thead><tr><th>media_id</th><th>user_id</th><th>work_dir</th><th>живой?</th></tr></thead>
-  <tbody>
-    {% for s in streams %}
-    <tr>
-      <td>{{ s.media_id }}</td>
-      <td>{{ s.user_id }}</td>
-      <td><code>{{ s.work_dir }}</code></td>
-      <td>{{ "да" if s.alive else "нет" }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+  <div class="table-shell">
+    <table>
+      <thead><tr><th>media_id</th><th>user_id</th><th>work_dir</th><th>живой?</th></tr></thead>
+      <tbody>
+        {% for s in streams %}
+        <tr>
+          <td>{{ s.media_id }}</td>
+          <td>{{ s.user_id }}</td>
+          <td><code>{{ s.work_dir }}</code></td>
+          <td><span class="status-chip {{ 'done' if s.alive else '' }}">{{ "да" if s.alive else "нет" }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endif %}
-
-<p><a href="/admin/users">← Пользователи</a></p>
 {% endblock %}

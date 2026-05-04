@@ -1,19 +1,26 @@
 {% extends "base.html" %}
 {% block title %}{{ item.title }}{% endblock %}
 {% block content %}
-<h1>{{ item.title }}</h1>
-<p style="color:#888">{{ (item.size_bytes / (1024**3)) | round(1) }} ГБ</p>
+<section class="section-head media-title">
+  <div>
+    <p class="eyebrow">Просмотр</p>
+    <h1>{{ item.title }}</h1>
+    <p class="lead">{{ (item.size_bytes / (1024**3)) | round(1) }} ГБ</p>
+  </div>
+</section>
 
-<video id="player" controls preload="metadata" style="width:100%; max-width:960px; background:#000"></video>
+<section class="player-shell">
+  <video id="player" controls preload="metadata"></video>
+</section>
 
-<p style="margin-top:1rem">
-  <a href="/api/download/{{ item.id }}" class="button">Скачать оригинал</a>
-  <form method="post" action="/api/media/{{ item.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить «{{ item.title }}»?');">
+<section class="action-bar">
+  <a href="/api/download/{{ item.id }}" class="button primary">Скачать оригинал</a>
+  <a href="/library" class="button secondary">Библиотека</a>
+  <form method="post" action="/api/media/{{ item.id }}/delete" onsubmit="return confirm('Удалить «{{ item.title }}»?');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit">Удалить</button>
+    <button class="button danger" type="submit">Удалить</button>
   </form>
-  <a href="/library">← Библиотека</a>
-</p>
+</section>
 
 <script src="/static/hls.min.js"></script>
 <script>
@@ -32,7 +39,6 @@
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // Safari/iOS — нативная поддержка HLS
     video.src = src;
   } else {
     document.querySelector('main').innerHTML += '<p class="error">Браузер не поддерживает HLS. Скачайте оригинал.</p>';

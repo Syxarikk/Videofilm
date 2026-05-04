@@ -1,27 +1,46 @@
 {% extends "base.html" %}
 {% block title %}Активация 2FA{% endblock %}
 {% block content %}
-<h1>Активация двухфакторной аутентификации</h1>
-{% if qr_data_uri %}
-<p>1. Установите Google Authenticator (или Authy / 1Password). 2. Отсканируйте QR-код. 3. Введите 6-значный код снизу.</p>
-<img src="{{ qr_data_uri }}" alt="QR" width="240" height="240">
-<p>Если QR не сканируется — введите секрет вручную:</p>
-<pre class="codes">{{ secret }}</pre>
-{% endif %}
+<section class="form-page">
+  <div>
+    <p class="eyebrow">Безопасность</p>
+    <h1>Активация 2FA</h1>
+    <p class="lead">Подключите приложение-аутентификатор, чтобы защитить медиасервер даже при утечке пароля.</p>
+  </div>
+
+  {% if qr_data_uri %}
+    <section class="qr-layout">
+      <div class="qr-box">
+        <img src="{{ qr_data_uri }}" alt="QR" width="240" height="240">
+      </div>
+      <div>
+        <h2>Отсканируйте QR-код</h2>
+        <p>Используйте Google Authenticator, Authy, 1Password или другое приложение с TOTP.</p>
+        <p>Если QR не сканируется, введите секрет вручную:</p>
+        <pre class="codes">{{ secret }}</pre>
+      </div>
+    </section>
+  {% endif %}
 
 {% if backup_codes %}
-<h2>Сохраните эти 10 backup-кодов</h2>
-<p><strong>Они показываются один раз.</strong> Каждым кодом можно войти один раз, если телефон с аутентификатором недоступен.</p>
-<ol class="codes">
-  {% for c in backup_codes %}<li>{{ c }}</li>{% endfor %}
-</ol>
+  <section class="notice-panel">
+    <h2>Сохраните эти 10 backup-кодов</h2>
+    <p><strong>Они показываются один раз.</strong> Каждым кодом можно войти один раз, если телефон с аутентификатором недоступен.</p>
+    <ol class="codes code-grid">
+      {% for c in backup_codes %}<li>{{ c }}</li>{% endfor %}
+    </ol>
+  </section>
 {% endif %}
 
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
-<form method="post" action="/enroll-2fa">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Код из приложения <input name="code" autocomplete="one-time-code" required></label>
-  <button type="submit">Активировать</button>
-</form>
+  <form class="panel-form" method="post" action="/enroll-2fa">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>
+      <span>Код из приложения</span>
+      <input name="code" autocomplete="one-time-code" required>
+    </label>
+    <button class="button primary" type="submit">Активировать</button>
+  </form>
+</section>
 {% endblock %}

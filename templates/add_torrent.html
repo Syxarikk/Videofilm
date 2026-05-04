@@ -1,14 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Добавить торрент{% endblock %}
 {% block content %}
-<h1>Добавить magnet-ссылку</h1>
-<p>Сервер скачает торрент и появится в библиотеке после загрузки.</p>
-<form method="post" action="/api/torrents">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Magnet-ссылка<br>
-    <input name="magnet" placeholder="magnet:?xt=urn:btih:..." required style="width: 100%; max-width: 600px">
-  </label>
-  <button type="submit">Добавить</button>
-</form>
-<p><a href="/downloads">→ Активные загрузки</a> · <a href="/library">← Библиотека</a></p>
+<section class="form-page">
+  <div>
+    <p class="eyebrow">Новая загрузка</p>
+    <h1>Добавить magnet-ссылку</h1>
+    <p class="lead">Сервер передаст задачу в qBittorrent, а готовый файл появится в библиотеке после завершения загрузки.</p>
+  </div>
+
+  <form class="panel-form wide" method="post" action="/api/torrents">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>
+      <span>Magnet-ссылка</span>
+      <input name="magnet" placeholder="magnet:?xt=urn:btih:..." required>
+    </label>
+    <div class="form-actions">
+      <button class="button primary" type="submit">Добавить</button>
+      <a class="button secondary" href="/downloads">Активные загрузки</a>
+      <a class="button ghost" href="/library">Библиотека</a>
+    </div>
+  </form>
+</section>
 {% endblock %}

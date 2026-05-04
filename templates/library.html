@@ -1,18 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Библиотека{% endblock %}
 {% block content %}
-<h1>Библиотека</h1>
-<p><a href="/add-torrent">+ Добавить magnet</a> · <a href="/downloads">→ Загрузки</a></p>
+<section class="hero-panel">
+  <div>
+    <p class="eyebrow">Медиатека</p>
+    <h1>Библиотека</h1>
+    <p class="lead">Все загруженные фильмы и видео доступны здесь, с быстрым переходом к просмотру или скачиванию оригинала.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button primary" href="/add-torrent">Добавить magnet</a>
+    <a class="button secondary" href="/downloads">Загрузки</a>
+  </div>
+</section>
+
 {% if not items %}
-  <p>Здесь пока ничего нет. Добавьте magnet-ссылку, чтобы начать.</p>
+  <section class="empty-state">
+    <p class="eyebrow">Пусто</p>
+    <h2>Библиотека ждет первый релиз</h2>
+    <p>Добавьте magnet-ссылку, и файл появится здесь после завершения загрузки.</p>
+    <a class="button primary" href="/add-torrent">Добавить magnet</a>
+  </section>
 {% else %}
-<ul style="list-style:none; padding:0">
-{% for it in items %}
-  <li style="padding:0.5rem 0; border-bottom: 1px solid #eee">
-    <a href="/media/{{ it.id }}">{{ it.title }}</a>
-    <span style="color:#888">— {{ (it.size_bytes / (1024**3)) | round(1) }} ГБ</span>
-  </li>
-{% endfor %}
-</ul>
+  <section class="section-head">
+    <div>
+      <p class="eyebrow">{{ items|length }} файлов</p>
+      <h2>Готово к просмотру</h2>
+    </div>
+  </section>
+
+  <div class="media-grid">
+    {% for it in items %}
+      <article class="media-card">
+        <a class="media-poster" href="/media/{{ it.id }}" aria-label="Открыть {{ it.title }}">
+          <span>{{ it.title[:2] | upper }}</span>
+        </a>
+        <div class="media-card-body">
+          <div>
+            <h3><a href="/media/{{ it.id }}">{{ it.title }}</a></h3>
+            <p>{{ (it.size_bytes / (1024**3)) | round(1) }} ГБ</p>
+          </div>
+          <div class="card-actions">
+            <a class="button secondary compact" href="/media/{{ it.id }}">Смотреть</a>
+            <a class="button ghost compact" href="/api/download/{{ it.id }}">Скачать</a>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
 {% endif %}
 {% endblock %}

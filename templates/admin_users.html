@@ -1,40 +1,64 @@
 {% extends "base.html" %}
 {% block title %}Управление пользователями{% endblock %}
 {% block content %}
-<h1>Пользователи</h1>
+<section class="hero-panel compact-hero">
+  <div>
+    <p class="eyebrow">Администрирование</p>
+    <h1>Пользователи</h1>
+    <p class="lead">Создавайте доступы, проверяйте роли и состояние двухфакторной защиты.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="/admin/health">Здоровье сервера</a>
+  </div>
+</section>
 
 {% if created_user %}
-<p class="error">Создан пользователь <strong>{{ created_user.username }}</strong>.
-Временный пароль: <code>{{ temp_password }}</code> — передайте его пользователю и попросите сразу сменить.</p>
+<section class="notice-panel success">
+  <h2>Пользователь создан</h2>
+  <p>Логин: <strong>{{ created_user.username }}</strong></p>
+  <p>Временный пароль: <code>{{ temp_password }}</code>. Передайте его пользователю и попросите сразу сменить.</p>
+</section>
 {% endif %}
 
-<form method="post" action="/admin/users">
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<form class="panel-form wide" method="post" action="/admin/users">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Логин нового пользователя <input name="username" required pattern="[a-zA-Z0-9_]{3,32}"></label>
-  <label>Сделать админом? <input name="is_admin" type="checkbox" value="1"></label>
-  <button type="submit">Создать</button>
+  <div class="form-grid">
+    <label>
+      <span>Логин нового пользователя</span>
+      <input name="username" required pattern="[a-zA-Z0-9_]{3,32}">
+    </label>
+    <label class="toggle-row">
+      <input name="is_admin" type="checkbox" value="1">
+      <span>Сделать админом</span>
+    </label>
+  </div>
+  <button class="button primary" type="submit">Создать</button>
 </form>
 
-<table>
-  <thead><tr><th>ID</th><th>Логин</th><th>Админ?</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
-  <tbody>
-  {% for u in users %}
-    <tr>
-      <td>{{ u.id }}</td>
-      <td>{{ u.username }}</td>
-      <td>{{ "да" if u.is_admin else "нет" }}</td>
-      <td>{{ "вкл" if u.totp_enabled else "выкл" }}</td>
-      <td>{{ u.created_at.strftime("%Y-%m-%d") }}</td>
-      <td>
-        {% if u.id != user.id %}
-        <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit">Удалить</button>
-        </form>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="table-shell">
+  <table>
+    <thead><tr><th>ID</th><th>Логин</th><th>Роль</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td class="torrent-name">{{ u.username }}</td>
+        <td><span class="status-chip {{ 'active' if u.is_admin else '' }}">{{ "админ" if u.is_admin else "пользователь" }}</span></td>
+        <td><span class="status-chip {{ 'done' if u.totp_enabled else '' }}">{{ "вкл" if u.totp_enabled else "выкл" }}</span></td>
+        <td>{{ u.created_at.strftime("%Y-%m-%d") }}</td>
+        <td>
+          {% if u.id != user.id %}
+          <form method="post" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('Удалить пользователя {{ u.username }}?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="button danger compact" type="submit">Удалить</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
