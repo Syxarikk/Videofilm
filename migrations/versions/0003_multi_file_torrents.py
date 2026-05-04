@@ -11,7 +11,9 @@ import sqlalchemy as sa
 
 
 revision: str = '0003'
-down_revision: Union[str, Sequence[str], None] = '0002'
+# В main-ветке миграция 2FA-removal называется "0002_remove_2fa" (а не просто "0002"),
+# поэтому сюда подставляем именно эту строку — иначе alembic не свяжет цепочку ревизий.
+down_revision: Union[str, Sequence[str], None] = '0002_remove_2fa'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
