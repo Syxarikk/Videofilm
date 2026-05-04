@@ -47,7 +47,10 @@ def test_scan_once_creates_media_item_for_completed_torrent(db_factory, tmp_path
         items = s.scalars(select(MediaItem)).all()
         assert len(items) == 1
         m = items[0]
+        # title — из имени файла
         assert m.title == "Some Movie (2024)"
+        # torrent_name — из имени торрента (для группировки)
+        assert m.torrent_name == "Some Movie (2024)"
         assert m.file_path.endswith(".mp4")
         assert m.size_bytes == 5_000_000
         assert m.torrent_hash == "abc"
@@ -79,19 +82,50 @@ def test_scan_once_idempotent(db_factory, tmp_path):
         assert len(s.scalars(select(MediaItem)).all()) == 1
 
 
-def test_scan_once_picks_largest_video_file(db_factory, tmp_path):
-    folder = tmp_path / "Show"
+def test_scan_once_creates_one_item_per_video_file(db_factory, tmp_path):
+    """Многофайловый торрент (например, сериал) даёт MediaItem на каждый видеофайл."""
+    folder = tmp_path / "Show.S01"
     folder.mkdir()
-    (folder / "tiny.mkv").write_bytes(b"\x00" * 1000)
-    (folder / "big.mkv").write_bytes(b"\x00" * 10_000_000)
-    (folder / "huge.txt").write_bytes(b"\x00" * 100_000_000)  # не видео
+    (folder / "Show.S01E01.mkv").write_bytes(b"\x00" * 5_000_000)
+    (folder / "Show.S01E02.mkv").write_bytes(b"\x00" * 5_000_000)
+    (folder / "Show.S01E03.mkv").write_bytes(b"\x00" * 5_000_000)
+    (folder / "RARBG.txt").write_bytes(b"\x00" * 100)  # не видео
 
     qb = FakeQbClient([TorrentInfo(
-        hash="h", name="Show", progress=1.0, dlspeed=0, state="uploading",
-        size=10_001_000, save_path=str(tmp_path), content_path=str(folder), eta_seconds=0,
+        hash="h", name="Show.S01", progress=1.0, dlspeed=0, state="uploading",
+        size=15_000_000, save_path=str(tmp_path), content_path=str(folder), eta_seconds=0,
     )])
     with db_factory() as s:
         scan_once(qb, s); s.commit()
     with db_factory() as s:
-        m = s.scalars(select(MediaItem)).one()
-        assert m.file_path.endswith("big.mkv")
+        items = s.scalars(select(MediaItem).order_by(MediaItem.file_path)).all()
+        assert len(items) == 3
+        assert all(i.torrent_hash == "h" for i in items)
+        # все три должны иметь одинаковый torrent_name (для группировки)
+        torrent_names = {i.torrent_name for i in items}
+        assert len(torrent_names) == 1
+        # каждый file_path указывает на свой эпизод
+        paths = {i.file_path for i in items}
+        assert any(p.endswith("Show.S01E01.mkv") for p in paths)
+        assert any(p.endswith("Show.S01E02.mkv") for p in paths)
+        assert any(p.endswith("Show.S01E03.mkv") for p in paths)
+
+
+def test_scan_once_idempotent_for_multi_file(db_factory, tmp_path):
+    """Повторный скан того же многофайлового торрента не плодит дубликаты."""
+    folder = tmp_path / "Show.S01"
+    folder.mkdir()
+    (folder / "S01E01.mkv").write_bytes(b"\x00" * 1000)
+    (folder / "S01E02.mkv").write_bytes(b"\x00" * 1000)
+
+    qb = FakeQbClient([TorrentInfo(
+        hash="h", name="Show.S01", progress=1.0, dlspeed=0, state="uploading",
+        size=2000, save_path=str(tmp_path), content_path=str(folder), eta_seconds=0,
+    )])
+    with db_factory() as s:
+        scan_once(qb, s); s.commit()
+    with db_factory() as s:
+        scan_once(qb, s); s.commit()
+    with db_factory() as s:
+        items = s.scalars(select(MediaItem)).all()
+        assert len(items) == 2

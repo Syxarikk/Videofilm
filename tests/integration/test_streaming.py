@@ -39,7 +39,7 @@ def _clear_registry():
 
 def _create_media(db_factory, sample: Path) -> int:
     with db_factory() as s:
-        m = MediaItem(torrent_hash="h", title="Test", file_path=str(sample), size_bytes=sample.stat().st_size)
+        m = MediaItem(torrent_hash="h", torrent_name="Test", title="Test", file_path=str(sample), size_bytes=sample.stat().st_size)
         s.add(m); s.commit(); s.refresh(m)
         return m.id
 

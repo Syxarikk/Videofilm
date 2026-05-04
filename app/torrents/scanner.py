@@ -1,5 +1,5 @@
 """Фоновый сканер: периодически опрашивает qBittorrent, для завершённых торрентов,
-которых ещё нет в media_items, создаёт записи в БД."""
+для каждого видеофайла внутри создаёт запись в media_items."""
 import asyncio
 import logging
 from pathlib import Path
@@ -21,49 +21,60 @@ class _QbProto(Protocol):
     def list_torrents(self) -> list[TorrentInfo]: ...
 
 
-def _find_largest_video(content_path: str) -> Path | None:
+def _find_all_videos(content_path: str) -> list[Path]:
+    """Все видеофайлы внутри торрента. Для одиночных торрентов — список из одного файла.
+
+    Сортируется по имени файла, чтобы серии шли в естественном порядке (S01E01, S01E02 …).
+    """
     p = Path(content_path)
     if p.is_file():
-        return p if p.suffix.lower() in VIDEO_EXTENSIONS else None
+        return [p] if p.suffix.lower() in VIDEO_EXTENSIONS else []
     if not p.is_dir():
-        return None
-    candidates = [
-        f for f in p.rglob("*")
-        if f.is_file() and f.suffix.lower() in VIDEO_EXTENSIONS
-    ]
-    if not candidates:
-        return None
-    return max(candidates, key=lambda f: f.stat().st_size)
+        return []
+    return sorted(
+        (f for f in p.rglob("*") if f.is_file() and f.suffix.lower() in VIDEO_EXTENSIONS),
+        key=lambda f: f.name.lower(),
+    )
 
 
 def scan_once(qb: _QbProto, session: Session) -> int:
-    """Один проход. Возвращает число добавленных media_items."""
+    """Один проход. Возвращает число добавленных media_items.
+
+    Для каждого завершённого торрента создаём по одной MediaItem на каждый видеофайл.
+    Если запись с тем же `(torrent_hash, file_path)` уже есть — пропускаем.
+    """
     try:
         torrents = qb.list_torrents()
     except Exception as e:  # ловим всё, чтобы не уронить фоновую задачу
         log.warning("scan_once: qBittorrent error: %s", e)
         return 0
 
-    existing_hashes = set(session.scalars(select(MediaItem.torrent_hash)).all())
+    existing_pairs: set[tuple[str, str]] = set(
+        session.execute(select(MediaItem.torrent_hash, MediaItem.file_path)).all()
+    )
     added = 0
     for t in torrents:
         if not t.is_complete:
             continue
-        if t.hash in existing_hashes:
-            continue
-        video = _find_largest_video(t.content_path)
-        if video is None:
+        videos = _find_all_videos(t.content_path)
+        if not videos:
             log.info("scan_once: no video file in %s, skipping", t.content_path)
             continue
-        item = MediaItem(
-            torrent_hash=t.hash,
-            title=parse_title(video.name),
-            file_path=str(video),
-            size_bytes=video.stat().st_size,
-            added_by=None,  # неизвестно, кто добавил — qBittorrent не хранит
-        )
-        session.add(item)
-        added += 1
+        torrent_name = parse_title(t.name)
+        for video in videos:
+            key = (t.hash, str(video))
+            if key in existing_pairs:
+                continue
+            session.add(MediaItem(
+                torrent_hash=t.hash,
+                torrent_name=torrent_name,
+                title=parse_title(video.name),
+                file_path=str(video),
+                size_bytes=video.stat().st_size,
+                added_by=None,  # неизвестно, кто добавил — qBittorrent не хранит
+            ))
+            existing_pairs.add(key)
+            added += 1
     return added
 
 

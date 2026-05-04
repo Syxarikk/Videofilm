@@ -40,7 +40,7 @@ def test_media_item_and_watch_progress_models_exist():
         u = User(username="dave", password_hash="x")
         s.add(u)
         s.commit()
-        m = MediaItem(torrent_hash="abc", title="T", file_path="/x", size_bytes=1, added_by=u.id)
+        m = MediaItem(torrent_hash="abc", torrent_name="T", title="T", file_path="/x", size_bytes=1, added_by=u.id)
         s.add(m)
         s.commit()
         w = WatchProgress(user_id=u.id, media_id=m.id, position_seconds=0)

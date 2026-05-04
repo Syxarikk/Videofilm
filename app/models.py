@@ -32,10 +32,21 @@ class Session(Base):
 
 
 class MediaItem(Base):
+    """Один видеофайл из торрента.
+
+    Один торрент может содержать несколько серий — для каждого видеофайла создаётся
+    отдельный MediaItem с одним и тем же `torrent_hash`. `torrent_name` — общее
+    человекочитаемое имя торрента (для группировки в библиотеке), `title` — имя
+    конкретного файла (например, «S01E03»).
+    """
     __tablename__ = "media_items"
+    __table_args__ = (
+        UniqueConstraint("torrent_hash", "file_path", name="uq_media_items_hash_path"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    torrent_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    torrent_hash: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    torrent_name: Mapped[str] = mapped_column(String(512), nullable=False)
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)

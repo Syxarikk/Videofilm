@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MediaServer — Библиотека (превью)</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #141420;
+    --surface-2: #1c1c2e;
+    --border: #2a2a3a;
+    --text: #f5f5f7;
+    --text-dim: #8c8ca0;
+    --text-faint: #5c5c70;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --success: #10b981;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  /* Top nav */
+  header.topnav {
+    background: rgba(20,20,32,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.85rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo {
+    color: var(--accent);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .logo svg { width: 18px; height: 18px; }
+  nav.main { display: flex; gap: 0.4rem; }
+  nav.main a {
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    transition: all 0.15s;
+  }
+  nav.main a:hover { color: var(--text); background: var(--surface-2); }
+  nav.main a.active { color: var(--text); background: rgba(59,130,246,0.15); }
+  .user-menu {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.3rem 0.6rem 0.3rem 0.4rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.75rem;
+  }
+
+  /* Page */
+  main { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* Hero shelf */
+  .hero {
+    position: relative;
+    height: 380px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+    background:
+      linear-gradient(180deg, transparent 0%, var(--bg) 95%),
+      linear-gradient(90deg, var(--bg) 0%, transparent 50%),
+      linear-gradient(45deg, #1a3a6e, #5a2c4e);
+  }
+  .hero-content {
+    position: absolute; bottom: 2rem; left: 2rem; right: 2rem;
+    max-width: 540px;
+  }
+  .hero-label {
+    color: var(--accent);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+  }
+  .hero-meta {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 0.8rem;
+    display: flex; gap: 0.8rem; align-items: center;
+  }
+  .hero-meta .dot { width: 3px; height: 3px; background: var(--text-faint); border-radius: 50%; }
+  .hero p.desc {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.7rem 1.4rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    margin-left: 0.6rem;
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  /* Section */
+  .section-header {
+    display: flex; align-items: baseline; gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .section-header h2 {
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  .section-header a {
+    margin-left: auto;
+    color: var(--accent);
+    font-size: 0.8rem;
+    text-decoration: none;
+  }
+  .section-header a:hover { text-decoration: underline; }
+
+  /* Poster grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .poster {
+    position: relative;
+    aspect-ratio: 2/3;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .poster:hover { transform: scale(1.04); }
+  .poster .art {
+    position: absolute; inset: 0;
+  }
+  .poster .overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 0.7rem;
+  }
+  .poster .title {
+    font-weight: 700;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+  }
+  .poster .year { color: var(--text-dim); font-size: 0.75rem; }
+  .poster .badge {
+    position: absolute; top: 0.5rem; right: 0.5rem;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    font-weight: 600;
+  }
+  .poster .progress {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: rgba(255,255,255,0.15);
+  }
+  .poster .progress > div { height: 100%; background: var(--accent); }
+
+  /* Different poster gradients */
+  .p1 .art { background: linear-gradient(135deg, #c2410c, #1c0a0a); }
+  .p2 .art { background: linear-gradient(135deg, #1e40af, #0a0a1c); }
+  .p3 .art { background: linear-gradient(135deg, #d4a017, #1c1408); }
+  .p4 .art { background: linear-gradient(135deg, #831843, #0a0a14); }
+  .p5 .art { background: linear-gradient(135deg, #166534, #0a1c0a); }
+  .p6 .art { background: linear-gradient(135deg, #6b21a8, #0a0a14); }
+  .p7 .art { background: linear-gradient(135deg, #7c2d12, #14080a); }
+  .p8 .art { background: linear-gradient(135deg, #155e75, #0a141c); }
+  .p9 .art { background: linear-gradient(135deg, #92400e, #1c1408); }
+  .p10 .art { background: linear-gradient(135deg, #4c1d95, #0a0a14); }
+  .p11 .art { background: linear-gradient(135deg, #064e3b, #0a1c14); }
+  .p12 .art { background: linear-gradient(135deg, #be123c, #1c080a); }
+
+  /* Empty state hint */
+  .hint {
+    text-align: center; padding: 3rem; border: 1px dashed var(--border); border-radius: 12px;
+    color: var(--text-faint); font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+
+<header class="topnav">
+  <span class="logo">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    MEDIASERVER
+  </span>
+  <nav class="main">
+    <a href="#" class="active">Библиотека</a>
+    <a href="#">Загрузки <span style="color:var(--success);font-size:0.7rem;">●3</span></a>
+    <a href="#">Добавить</a>
+    <a href="#">Пользователи</a>
+  </nav>
+  <div class="user-menu">
+    <div class="avatar">А</div>
+    <span>Александр</span>
+  </div>
+</header>
+
+<main>
+
+<!-- Hero / featured -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-label">Недавно добавлено</div>
+    <h1>Дюна: Часть Вторая</h1>
+    <div class="hero-meta">
+      <span>2024</span><span class="dot"></span>
+      <span>2ч 46мин</span><span class="dot"></span>
+      <span>4K HDR</span><span class="dot"></span>
+      <span style="color:var(--success)">★ 8.6</span>
+    </div>
+    <p class="desc">Пол Атрейдес объединяется с Чани и фрименами, чтобы отомстить заговорщикам, уничтожившим его семью.</p>
+    <button class="btn">▶ Смотреть</button>
+    <button class="btn btn-secondary">＋ В очередь</button>
+  </div>
+</div>
+
+<!-- Continue watching -->
+<div class="section-header">
+  <h2>Продолжить просмотр</h2>
+  <a href="#">Все →</a>
+</div>
+<div class="grid">
+  <div class="poster p1">
+    <div class="art"></div>
+    <div class="overlay"><div class="title">Дюна: Ч.2</div><div class="year">2024 · 4K</div></div>
+    <div class="badge">HDR</div>
+    <div class="progress"><div style="width:35%"></div></div>
+  </div>
+  <div class="poster p2">
+    <div class="art"></div>
+    <div class="overlay"><div class="title">Оппенгеймер</div><div class="year">2023 · 1080p</div></div>
+    <div class="progress"><div style="width:78%"></div></div>
+  </div>
+  <div class="poster p3">
+    <div class="art"></div>
+    <div class="overlay"><div class="title">Барби</div><div class="year">2023 · 1080p</div></div>
+    <div class="progress"><div style="width:12%"></div></div>
+  </div>
+  <div class="poster p4">
+    <div class="art"></div>
+    <div class="overlay"><div class="title">Атака титанов</div><div class="year">S4·E12</div></div>
+    <div class="badge">SUB</div>
+    <div class="progress"><div style="width:54%"></div></div>
+  </div>
+</div>
+
+<!-- Recently added -->
+<div class="section-header">
+  <h2>Недавно добавлено</h2>
+  <a href="#">Все →</a>
+</div>
+<div class="grid">
+  <div class="poster p5"><div class="art"></div><div class="overlay"><div class="title">Матрица</div><div class="year">1999 · 4K</div></div><div class="badge">NEW</div></div>
+  <div class="poster p6"><div class="art"></div><div class="overlay"><div class="title">Ла-Ла Ленд</div><div class="year">2016 · 1080p</div></div><div class="badge">NEW</div></div>
+  <div class="poster p7"><div class="art"></div><div class="overlay"><div class="title">Интерстеллар</div><div class="year">2014 · 4K</div></div></div>
+  <div class="poster p8"><div class="art"></div><div class="overlay"><div class="title">Бегущий по лезвию 2049</div><div class="year">2017 · 4K</div></div></div>
+  <div class="poster p9"><div class="art"></div><div class="overlay"><div class="title">Мандалорец</div><div class="year">S3·E8</div></div></div>
+  <div class="poster p10"><div class="art"></div><div class="overlay"><div class="title">Бойцовский клуб</div><div class="year">1999 · 1080p</div></div></div>
+  <div class="poster p11"><div class="art"></div><div class="overlay"><div class="title">Зелёная миля</div><div class="year">1999 · 720p</div></div></div>
+  <div class="poster p12"><div class="art"></div><div class="overlay"><div class="title">Игра престолов</div><div class="year">S8·E6</div></div></div>
+</div>
+
+<div class="hint">
+  Это превью только странички «Библиотека». Остальные страницы (Загрузки, Добавить торрент, Пользователи, плеер) будут в том же стиле.
+</div>
+
+</main>
+
+</body>
+</html>

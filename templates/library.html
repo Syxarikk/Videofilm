@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Медиатека</p>
     <h1>Библиотека</h1>
-    <p class="lead">Все загруженные фильмы и видео доступны здесь, с быстрым переходом к просмотру или скачиванию оригинала.</p>
+    <p class="lead">Все загруженные фильмы и сериалы. Сериалы открываются как карточка с серией внутри.</p>
   </div>
   <div class="hero-actions">
     <a class="button primary" href="/add-torrent">Добавить magnet</a>
@@ -13,7 +13,7 @@
   </div>
 </section>
 
-{% if not items %}
+{% if not groups %}
   <section class="empty-state">
     <p class="eyebrow">Пусто</p>
     <h2>Библиотека ждет первый релиз</h2>
@@ -23,26 +23,34 @@
 {% else %}
   <section class="section-head">
     <div>
-      <p class="eyebrow">{{ items|length }} файлов</p>
+      <p class="eyebrow">{{ groups|length }} торрент{% if groups|length != 1 %}ов{% endif %}</p>
       <h2>Готово к просмотру</h2>
     </div>
   </section>
 
   <div class="media-grid">
-    {% for it in items %}
+    {% for g in groups %}
+      {% set is_multi = g.files|length > 1 %}
+      {% set link = "/torrent/" + g.torrent_hash if is_multi else "/media/" + (g.files[0].id|string) %}
       <article class="media-card">
-        <a class="media-poster" href="/media/{{ it.id }}" aria-label="Открыть {{ it.title }}">
-          <span>{{ it.title[:2] | upper }}</span>
+        <a class="media-poster" href="{{ link }}" aria-label="Открыть {{ g.torrent_name }}">
+          <span>{{ g.torrent_name[:2] | upper }}</span>
         </a>
         <div class="media-card-body">
           <div>
-            <h3><a href="/media/{{ it.id }}">{{ it.title }}</a></h3>
-            <p>{{ (it.size_bytes / (1024**3)) | round(1) }} ГБ</p>
+            <h3><a href="{{ link }}">{{ g.torrent_name }}</a></h3>
+            <p>
+              {% if is_multi %}{{ g.files|length }} серий · {% endif %}{{ (g.total_size_bytes / (1024**3)) | round(1) }} ГБ
+            </p>
           </div>
           <div class="card-actions">
-            <a class="button secondary compact" href="/media/{{ it.id }}">Смотреть</a>
-            <a class="button ghost compact" href="/api/download/{{ it.id }}">Скачать</a>
-            <form method="post" action="/api/media/{{ it.id }}/delete" onsubmit="return confirm('Удалить «{{ it.title }}»? Файл будет стёрт с диска, действие необратимо.');" style="display:inline; margin:0;">
+            <a class="button secondary compact" href="{{ link }}">{{ "Открыть" if is_multi else "Смотреть" }}</a>
+            {% if not is_multi %}
+              <a class="button ghost compact" href="/api/download/{{ g.files[0].id }}">Скачать</a>
+            {% endif %}
+            <form method="post" action="/api/media/{{ g.files[0].id }}/delete"
+                  onsubmit="return confirm('Удалить «{{ g.torrent_name }}»?{% if is_multi %} Будут удалены все {{ g.files|length }} серий.{% endif %} Файлы будут стёрты с диска, действие необратимо.');"
+                  style="display:inline; margin:0;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button class="button danger compact" type="submit">Удалить</button>
             </form>

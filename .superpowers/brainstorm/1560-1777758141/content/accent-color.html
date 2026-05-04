@@ -1,0 +1,78 @@
+<h2>Какой акцентный цвет?</h2>
+<p class="subtitle">Цвет активного пункта, кнопок «Воспроизвести», ссылок и прогресса. Фон в любом случае тёмный.</p>
+
+<div class="cards">
+  <div class="card" data-choice="red" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0a0f;padding:0;min-height:180px;color:#fff;font-family:system-ui;">
+      <div style="background:#141420;padding:0.6rem 0.8rem;display:flex;align-items:center;gap:0.8rem;border-bottom:1px solid #222;">
+        <span style="color:#e50914;font-weight:800;letter-spacing:0.05em;font-size:0.7rem;">▶ MEDIASERVER</span>
+        <span style="font-size:0.65rem;color:#fff;border-bottom:2px solid #e50914;padding-bottom:0.15rem;">Библиотека</span>
+        <span style="font-size:0.65rem;color:#888;">Загрузки</span>
+      </div>
+      <div style="padding:0.8rem;">
+        <div style="background:#e50914;color:#fff;padding:0.4rem 0.8rem;border-radius:4px;display:inline-flex;align-items:center;gap:0.3rem;font-size:0.7rem;font-weight:600;">▶ Смотреть</div>
+        <div style="margin-top:0.6rem;height:4px;background:#222;border-radius:2px;overflow:hidden;"><div style="width:65%;height:100%;background:#e50914;"></div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Красный (Netflix-style)</h3>
+      <p>Энергично, агрессивно, ассоциируется со стримингом. Смело и узнаваемо.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="orange" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0a0f;padding:0;min-height:180px;color:#fff;font-family:system-ui;">
+      <div style="background:#141420;padding:0.6rem 0.8rem;display:flex;align-items:center;gap:0.8rem;border-bottom:1px solid #222;">
+        <span style="color:#e5a00d;font-weight:800;letter-spacing:0.05em;font-size:0.7rem;">▶ MEDIASERVER</span>
+        <span style="font-size:0.65rem;color:#fff;border-bottom:2px solid #e5a00d;padding-bottom:0.15rem;">Библиотека</span>
+        <span style="font-size:0.65rem;color:#888;">Загрузки</span>
+      </div>
+      <div style="padding:0.8rem;">
+        <div style="background:#e5a00d;color:#1a1300;padding:0.4rem 0.8rem;border-radius:4px;display:inline-flex;align-items:center;gap:0.3rem;font-size:0.7rem;font-weight:700;">▶ Смотреть</div>
+        <div style="margin-top:0.6rem;height:4px;background:#222;border-radius:2px;overflow:hidden;"><div style="width:65%;height:100%;background:#e5a00d;"></div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Янтарный (Plex-style)</h3>
+      <p>Тёплый, кинематографичный, как лампы кинотеатра. Хорошо контрастирует с тёмным.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="blue" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0a0f;padding:0;min-height:180px;color:#fff;font-family:system-ui;">
+      <div style="background:#141420;padding:0.6rem 0.8rem;display:flex;align-items:center;gap:0.8rem;border-bottom:1px solid #222;">
+        <span style="color:#3b82f6;font-weight:800;letter-spacing:0.05em;font-size:0.7rem;">▶ MEDIASERVER</span>
+        <span style="font-size:0.65rem;color:#fff;border-bottom:2px solid #3b82f6;padding-bottom:0.15rem;">Библиотека</span>
+        <span style="font-size:0.65rem;color:#888;">Загрузки</span>
+      </div>
+      <div style="padding:0.8rem;">
+        <div style="background:#3b82f6;color:#fff;padding:0.4rem 0.8rem;border-radius:4px;display:inline-flex;align-items:center;gap:0.3rem;font-size:0.7rem;font-weight:600;">▶ Смотреть</div>
+        <div style="margin-top:0.6rem;height:4px;background:#222;border-radius:2px;overflow:hidden;"><div style="width:65%;height:100%;background:#3b82f6;"></div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Синий <span style="color:#10b981;font-size:0.75rem;font-weight:600;">★ рекомендую</span></h3>
+      <p>Спокойный, технологичный, не агрессивный. Не отвлекает от постеров и не «кричит». Apple TV+, Disney+ используют похожее.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="purple" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0a0f;padding:0;min-height:180px;color:#fff;font-family:system-ui;">
+      <div style="background:#141420;padding:0.6rem 0.8rem;display:flex;align-items:center;gap:0.8rem;border-bottom:1px solid #222;">
+        <span style="color:#a855f7;font-weight:800;letter-spacing:0.05em;font-size:0.7rem;">▶ MEDIASERVER</span>
+        <span style="font-size:0.65rem;color:#fff;border-bottom:2px solid #a855f7;padding-bottom:0.15rem;">Библиотека</span>
+        <span style="font-size:0.65rem;color:#888;">Загрузки</span>
+      </div>
+      <div style="padding:0.8rem;">
+        <div style="background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;padding:0.4rem 0.8rem;border-radius:4px;display:inline-flex;align-items:center;gap:0.3rem;font-size:0.7rem;font-weight:600;">▶ Смотреть</div>
+        <div style="margin-top:0.6rem;height:4px;background:#222;border-radius:2px;overflow:hidden;"><div style="width:65%;height:100%;background:linear-gradient(90deg,#a855f7,#7c3aed);"></div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D. Фиолетовый</h3>
+      <p>Премиальный, нестандартный — выделяет от Plex/Netflix. Twitch, HBO Max используют. Молодёжно.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:1.5rem;">Если хочется конкретный hex-код или другую идею — напишите словами.</p>

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ torrent_name }}{% endblock %}
+{% block content %}
+<section class="hero-panel">
+  <div>
+    <p class="eyebrow">Серии</p>
+    <h1>{{ torrent_name }}</h1>
+    <p class="lead">{{ items|length }} файлов · {{ (total_size_bytes / (1024**3)) | round(1) }} ГБ</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="/library">К библиотеке</a>
+    <form method="post" action="/api/media/{{ items[0].id }}/delete"
+          onsubmit="return confirm('Удалить «{{ torrent_name }}» полностью? Все {{ items|length }} файлов будут стёрты с диска. Действие необратимо.');"
+          style="display:inline; margin:0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="button danger" type="submit">Удалить всё</button>
+    </form>
+  </div>
+</section>
+
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Выберите файл</p>
+    <h2>Серии</h2>
+  </div>
+</section>
+
+<div class="media-grid">
+  {% for item in items %}
+    {% set position = progress_map.get(item.id, 0) %}
+    <article class="media-card">
+      <a class="media-poster" href="/media/{{ item.id }}" aria-label="Открыть {{ item.title }}">
+        <span>{{ item.title[:3] | upper }}</span>
+      </a>
+      <div class="media-card-body">
+        <div>
+          <h3><a href="/media/{{ item.id }}">{{ item.title }}</a></h3>
+          <p>
+            {{ (item.size_bytes / (1024**3)) | round(1) }} ГБ
+            {% if position > 0 %} · <span class="status-chip active">▶ просмотр</span>{% endif %}
+          </p>
+        </div>
+        <div class="card-actions">
+          <a class="button secondary compact" href="/media/{{ item.id }}">Смотреть</a>
+          <a class="button ghost compact" href="/api/download/{{ item.id }}">Скачать</a>
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+</div>
+{% endblock %}
