@@ -42,6 +42,10 @@
           <div class="card-actions">
             <a class="button secondary compact" href="/media/{{ it.id }}">Смотреть</a>
             <a class="button ghost compact" href="/api/download/{{ it.id }}">Скачать</a>
+            <form method="post" action="/api/media/{{ it.id }}/delete" onsubmit="return confirm('Удалить «{{ it.title }}»? Файл будет стёрт с диска, действие необратимо.');" style="display:inline; margin:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="button danger compact" type="submit">Удалить</button>
+            </form>
           </div>
         </div>
       </article>
