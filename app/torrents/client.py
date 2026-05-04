@@ -35,7 +35,11 @@ class QBittorrentClient:
             raise QBittorrentError(f"login: rejected (status={r.status_code}, body={r.text!r})")
         self._logged_in = True
 
-    def add_magnet(self, magnet: str, *, save_path: str) -> None:
+    def add_magnet(self, magnet_or_url: str, *, save_path: str) -> None:
+        """Передать в qBittorrent magnet-ссылку ИЛИ HTTP(S) URL .torrent-файла.
+
+        qBittorrent сам отличит magnet от URL и в случае URL скачает .torrent.
+        """
         self.login()
         # qBittorrent /torrents/add expects multipart/form-data; httpx encodes
         # multipart fields as raw UTF-8 (no percent-encoding), which keeps the
@@ -44,7 +48,7 @@ class QBittorrentClient:
             r = self._client.post(
                 "/api/v2/torrents/add",
                 files={
-                    "urls": (None, magnet),
+                    "urls": (None, magnet_or_url),
                     "savepath": (None, save_path),
                     "autoTMM": (None, "false"),
                 },
@@ -53,6 +57,23 @@ class QBittorrentClient:
             raise QBittorrentError(f"add_magnet: connection failed: {e}") from e
         if r.status_code != 200:
             raise QBittorrentError(f"add_magnet: status={r.status_code}, body={r.text!r}")
+
+    def add_torrent_file(self, content: bytes, filename: str, *, save_path: str) -> None:
+        """Залить .torrent файл (bytes) в qBittorrent — multipart с полем `torrents`."""
+        self.login()
+        try:
+            r = self._client.post(
+                "/api/v2/torrents/add",
+                files={
+                    "torrents": (filename, content, "application/x-bittorrent"),
+                    "savepath": (None, save_path),
+                    "autoTMM": (None, "false"),
+                },
+            )
+        except httpx.HTTPError as e:
+            raise QBittorrentError(f"add_torrent_file: connection failed: {e}") from e
+        if r.status_code != 200:
+            raise QBittorrentError(f"add_torrent_file: status={r.status_code}, body={r.text!r}")
 
     def list_torrents(self) -> list[TorrentInfo]:
         self.login()

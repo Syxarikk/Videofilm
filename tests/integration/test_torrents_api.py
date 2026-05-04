@@ -50,6 +50,72 @@ def test_invalid_magnet_returns_400(client, db_factory, csrf_for):
     assert r.status_code == 400
 
 
+def test_empty_form_returns_400(client, db_factory, csrf_for):
+    """Ни magnet, ни файл — должно отдать 400 с понятным сообщением."""
+    cookie = _logged_in(client, db_factory, csrf_for)
+    r = client.post(
+        "/api/torrents",
+        data={"csrf_token": csrf_for(cookie)},
+        cookies={"session": cookie},
+    )
+    assert r.status_code == 400
+
+
+@respx.mock
+def test_add_torrent_accepts_http_url(client, db_factory, csrf_for):
+    """HTTP(S) URL .torrent-файла (типа rutor) принимается и форвардится в qBittorrent."""
+    cookie = _logged_in(client, db_factory, csrf_for)
+    respx.post("http://127.0.0.1:8080/api/v2/auth/login").mock(
+        return_value=httpx.Response(200, text="Ok.")
+    )
+    add_route = respx.post("http://127.0.0.1:8080/api/v2/torrents/add").mock(
+        return_value=httpx.Response(200)
+    )
+    r = client.post(
+        "/api/torrents",
+        data={"magnet": "https://d.rutor.info/download/1083038", "csrf_token": csrf_for(cookie)},
+        cookies={"session": cookie},
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == "/downloads"
+    assert add_route.called
+
+
+@respx.mock
+def test_add_torrent_accepts_uploaded_file(client, db_factory, csrf_for):
+    """Загрузка валидного .torrent файла (multipart) принимается и форвардится в qBittorrent."""
+    cookie = _logged_in(client, db_factory, csrf_for)
+    respx.post("http://127.0.0.1:8080/api/v2/auth/login").mock(
+        return_value=httpx.Response(200, text="Ok.")
+    )
+    add_route = respx.post("http://127.0.0.1:8080/api/v2/torrents/add").mock(
+        return_value=httpx.Response(200)
+    )
+    # Минимально-валидный bencode dict: 'd' + что-то + 'e'
+    fake_torrent = b"d8:announce17:http://example.org4:infod6:lengthi100e4:name7:foo.txtee"
+    r = client.post(
+        "/api/torrents",
+        data={"csrf_token": csrf_for(cookie)},
+        files={"torrent_file": ("test.torrent", fake_torrent, "application/x-bittorrent")},
+        cookies={"session": cookie},
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == "/downloads"
+    assert add_route.called
+
+
+def test_invalid_torrent_file_returns_400(client, db_factory, csrf_for):
+    """Файл, не похожий на bencode (не начинается с 'd' или слишком короткий), отвергается."""
+    cookie = _logged_in(client, db_factory, csrf_for)
+    r = client.post(
+        "/api/torrents",
+        data={"csrf_token": csrf_for(cookie)},
+        files={"torrent_file": ("test.torrent", b"this is not bencode at all", "application/x-bittorrent")},
+        cookies={"session": cookie},
+    )
+    assert r.status_code == 400
+
+
 def test_unauthenticated_redirect(client, csrf_for):
     r = client.post(
         "/api/torrents",

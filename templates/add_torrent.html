@@ -4,15 +4,19 @@
 <section class="form-page">
   <div>
     <p class="eyebrow">Новая загрузка</p>
-    <h1>Добавить magnet-ссылку</h1>
-    <p class="lead">Сервер передаст задачу в qBittorrent, а готовый файл появится в библиотеке после завершения загрузки.</p>
+    <h1>Добавить торрент</h1>
+    <p class="lead">Magnet-ссылка, URL .torrent-файла (например с rutor) или сам .torrent файл с компьютера. qBittorrent скачает торрент, а готовый файл появится в библиотеке.</p>
   </div>
 
-  <form class="panel-form wide" method="post" action="/api/torrents">
+  <form class="panel-form wide" method="post" action="/api/torrents" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label>
-      <span>Magnet-ссылка</span>
-      <input name="magnet" placeholder="magnet:?xt=urn:btih:..." required>
+      <span>Magnet-ссылка или URL</span>
+      <input name="magnet" placeholder="magnet:?xt=urn:btih:...   или   https://d.rutor.info/download/...">
+    </label>
+    <label>
+      <span>Или загрузить .torrent файл</span>
+      <input name="torrent_file" type="file" accept=".torrent,application/x-bittorrent">
     </label>
     <div class="form-actions">
       <button class="button primary" type="submit">Добавить</button>

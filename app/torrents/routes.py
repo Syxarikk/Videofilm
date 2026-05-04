@@ -1,7 +1,7 @@
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -15,26 +15,80 @@ from app.torrents.client import QBittorrentClient, QBittorrentError
 router = APIRouter()
 api_router = APIRouter(prefix="/api/torrents")
 
-_MAGNET_RE = re.compile(r"^magnet:\?xt=urn:btih:[a-fA-F0-9]{32,64}", re.IGNORECASE)
+# Принимаем magnet-ссылку ИЛИ HTTP(S) URL (qBittorrent сам скачает .torrent по URL)
+_MAGNET_OR_URL_RE = re.compile(
+    r"^(magnet:\?xt=urn:btih:[a-fA-F0-9]{32,64}|https?://)",
+    re.IGNORECASE,
+)
+
+# Максимум для .torrent файла (1MB — больше всякого здравого смысла; защита от DoS)
+_MAX_TORRENT_FILE_BYTES = 1024 * 1024
+
+
+def _is_bencode_dict(content: bytes) -> bool:
+    """Проверка что байты выглядят как bencode-словарь — формат .torrent файла.
+
+    Все валидные .torrent начинаются с 'd' (bencode dictionary) и заканчиваются на 'e'.
+    Минимальный размер — десяток байтов (хеш + ключи), берём 11 для безопасности.
+    """
+    return len(content) >= 11 and content[:1] == b"d" and content[-1:] == b"e"
 
 
 @api_router.post("")
-def add_torrent(
-    magnet: Annotated[str, Form()],
+async def add_torrent(
     user: Annotated[User, Depends(get_current_user)],
     qb: Annotated[QBittorrentClient, Depends(get_qbittorrent_client)],
     settings: Annotated[Settings, Depends(get_settings)],
+    magnet: Annotated[str | None, Form()] = None,
+    torrent_file: Annotated[UploadFile | None, File()] = None,
     _csrf: Annotated[None, Depends(verify_csrf)] = None,
 ):
-    magnet = magnet.strip()
-    if not _MAGNET_RE.match(magnet):
-        raise HTTPException(status_code=400, detail="Не похоже на magnet-ссылку")
+    """Принимает один из трёх вариантов:
+
+    1. magnet-ссылку (`magnet:?xt=urn:btih:...`)
+    2. HTTP(S) URL .torrent-файла (qBittorrent сам скачает по URL)
+    3. .torrent файл загруженный с компьютера (multipart upload)
+    """
     save_path = f"{settings.media_root}/downloads"
-    try:
-        qb.add_magnet(magnet, save_path=save_path)
-    except QBittorrentError as e:
-        raise HTTPException(status_code=503, detail=f"qBittorrent недоступен: {e}")
-    return RedirectResponse("/downloads", status_code=303)
+
+    # 1. Файл (если загружен) — приоритет, потому что обычно явный выбор
+    if torrent_file is not None and torrent_file.filename:
+        content = await torrent_file.read()
+        if len(content) > _MAX_TORRENT_FILE_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f".torrent файл слишком большой (>{_MAX_TORRENT_FILE_BYTES // 1024} КБ)",
+            )
+        if not _is_bencode_dict(content):
+            raise HTTPException(
+                status_code=400,
+                detail="Не похоже на .torrent файл (ожидается bencode-формат)",
+            )
+        try:
+            qb.add_torrent_file(content, torrent_file.filename, save_path=save_path)
+        except QBittorrentError as e:
+            raise HTTPException(status_code=503, detail=f"qBittorrent недоступен: {e}")
+        return RedirectResponse("/downloads", status_code=303)
+
+    # 2. magnet или URL
+    if magnet:
+        magnet = magnet.strip()
+        if not _MAGNET_OR_URL_RE.match(magnet):
+            raise HTTPException(
+                status_code=400,
+                detail="Не похоже на magnet-ссылку или URL .torrent-файла",
+            )
+        try:
+            qb.add_magnet(magnet, save_path=save_path)
+        except QBittorrentError as e:
+            raise HTTPException(status_code=503, detail=f"qBittorrent недоступен: {e}")
+        return RedirectResponse("/downloads", status_code=303)
+
+    # 3. Ничего не передано
+    raise HTTPException(
+        status_code=400,
+        detail="Нужно указать magnet-ссылку, URL .torrent-файла или загрузить .torrent файл",
+    )
 
 
 def _format_speed(bytes_per_sec: int) -> str:
