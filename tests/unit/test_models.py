@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from app.db import Base, make_engine, make_session_factory
-from app.models import BackupCode, MediaItem, Session as UserSession, User, WatchProgress
+from app.models import MediaItem, Session as UserSession, User, WatchProgress
 
 
 def setup_db():
@@ -17,9 +17,7 @@ def test_user_columns_and_defaults():
         s.commit()
         s.refresh(u)
         assert u.id is not None
-        assert u.totp_enabled is False
         assert u.must_change_password is True
-        assert u.totp_secret_encrypted is None
         assert isinstance(u.created_at, datetime)
 
 
@@ -33,18 +31,6 @@ def test_session_links_to_user():
         s.add(sess)
         s.commit()
         assert sess.user_id == u.id
-
-
-def test_backup_code_links_to_user():
-    factory = setup_db()
-    with factory() as s:
-        u = User(username="carol", password_hash="x")
-        s.add(u)
-        s.commit()
-        b = BackupCode(user_id=u.id, code_hash="hash")
-        s.add(b)
-        s.commit()
-        assert b.used_at is None
 
 
 def test_media_item_and_watch_progress_models_exist():

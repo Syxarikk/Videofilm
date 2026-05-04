@@ -86,7 +86,6 @@ MEDIA_ROOT=$MEDIA_ROOT
 QBITTORRENT_URL=http://127.0.0.1:8080
 QBITTORRENT_USERNAME=admin
 QBITTORRENT_PASSWORD=$QB_PWD
-TOTP_ISSUER=MediaServer
 HLS_WORK_ROOT=/var/lib/mediasrv/hls
 EOF
   chmod 600 "$ENV_FILE"
@@ -145,7 +144,7 @@ echo "=========================================================="
 echo "Следующие шаги:"
 echo "  1. На роутере пробросьте порты 80 и 443 на этот сервер."
 echo "  2. Зайдите на https://$DOMAIN/login"
-echo "  3. Войдите под созданным админом, смените пароль, активируйте 2FA"
+echo "  3. Войдите под созданным админом и смените временный пароль"
 echo "  4. Создайте остальных пользователей в /admin/users"
 echo "  5. Установите Tailscale для безопасного SSH (см. docs/DEPLOYMENT.md)"
 echo "  6. Если нужен DDNS — настройте /etc/cron.d/mediasrv-ddns"

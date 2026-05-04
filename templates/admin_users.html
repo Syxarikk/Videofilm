@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Администрирование</p>
     <h1>Пользователи</h1>
-    <p class="lead">Создавайте доступы, проверяйте роли и состояние двухфакторной защиты.</p>
+    <p class="lead">Создавайте доступы, проверяйте роли и управляйте пользователями сервера.</p>
   </div>
   <div class="hero-actions">
     <a class="button secondary" href="/admin/health">Здоровье сервера</a>
@@ -39,14 +39,13 @@
 
 <div class="table-shell">
   <table>
-    <thead><tr><th>ID</th><th>Логин</th><th>Роль</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
+    <thead><tr><th>ID</th><th>Логин</th><th>Роль</th><th>Создан</th><th></th></tr></thead>
     <tbody>
     {% for u in users %}
       <tr>
         <td>{{ u.id }}</td>
         <td class="torrent-name">{{ u.username }}</td>
         <td><span class="status-chip {{ 'active' if u.is_admin else '' }}">{{ "админ" if u.is_admin else "пользователь" }}</span></td>
-        <td><span class="status-chip {{ 'done' if u.totp_enabled else '' }}">{{ "вкл" if u.totp_enabled else "выкл" }}</span></td>
         <td>{{ u.created_at.strftime("%Y-%m-%d") }}</td>
         <td>
           {% if u.id != user.id %}

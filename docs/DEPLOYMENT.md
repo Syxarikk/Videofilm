@@ -85,7 +85,7 @@ sudo nano /etc/cron.d/mediasrv-ddns   # подставить SUBDOMAIN/TOKEN
 Откройте `https://your-domain.duckdns.org/login` в браузере. Залогиньтесь под админом.
 
 Smoke-чеклист:
-- [ ] Login → Change password → 2FA enroll → /library
+- [ ] Login → Change password → /library
 - [ ] Скопируйте magnet-ссылку легального контента (например, Big Buck Bunny: `magnet:?xt=urn:btih:...`)
 - [ ] /add-torrent → видно прогресс на /downloads
 - [ ] Когда скачается → /library показывает фильм → /media/{id} играет в плеере
