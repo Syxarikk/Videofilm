@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Медиатека</p>
     <h1>Библиотека</h1>
-    <p class="lead">Все загруженные фильмы и видео доступны здесь, с быстрым переходом к просмотру или скачиванию оригинала.</p>
+    <p class="lead">Все загруженные фильмы и видео доступны здесь.</p>
   </div>
   <div class="hero-actions">
     <a class="button primary" href="/add-torrent">Добавить magnet</a>
@@ -13,39 +13,44 @@
   </div>
 </section>
 
-{% if not items %}
-  <section class="empty-state">
-    <p class="eyebrow">Пусто</p>
-    <h2>Библиотека ждет первый релиз</h2>
-    <p>Добавьте magnet-ссылку, и файл появится здесь после завершения загрузки.</p>
-    <a class="button primary" href="/add-torrent">Добавить magnet</a>
-  </section>
-{% else %}
-  <section class="section-head">
-    <div>
-      <p class="eyebrow">{{ items|length }} файлов</p>
-      <h2>Готово к просмотру</h2>
-    </div>
-  </section>
-
-  <div class="media-grid">
-    {% for it in items %}
-      <article class="media-card">
-        <a class="media-poster" href="/media/{{ it.id }}" aria-label="Открыть {{ it.title }}">
-          <span>{{ it.title[:2] | upper }}</span>
-        </a>
-        <div class="media-card-body">
-          <div>
-            <h3><a href="/media/{{ it.id }}">{{ it.title }}</a></h3>
-            <p>{{ (it.size_bytes / (1024**3)) | round(1) }} ГБ</p>
-          </div>
-          <div class="card-actions">
-            <a class="button secondary compact" href="/media/{{ it.id }}">Смотреть</a>
-            <a class="button ghost compact" href="/api/download/{{ it.id }}">Скачать</a>
-          </div>
-        </div>
-      </article>
+<form class="library-toolbar"
+      hx-get="/library"
+      hx-trigger="change, keyup changed delay:300ms from:#q-input"
+      hx-target=".media-grid-wrap"
+      hx-push-url="true">
+  <input id="q-input" type="search" name="q" placeholder="Поиск…" value="{{ filters.q }}">
+  <select name="kind">
+    <option value="">Все типы</option>
+    <option value="movie" {% if filters.kind == 'movie' %}selected{% endif %}>Фильмы</option>
+    <option value="series" {% if filters.kind == 'series' %}selected{% endif %}>Сериалы</option>
+    <option value="cartoon" {% if filters.kind == 'cartoon' %}selected{% endif %}>Мультфильмы</option>
+    <option value="anime" {% if filters.kind == 'anime' %}selected{% endif %}>Аниме</option>
+    <option value="documentary" {% if filters.kind == 'documentary' %}selected{% endif %}>Документальное</option>
+    <option value="show" {% if filters.kind == 'show' %}selected{% endif %}>Шоу</option>
+    <option value="other" {% if filters.kind == 'other' %}selected{% endif %}>Другое</option>
+  </select>
+  <select name="genre">
+    <option value="">Все жанры</option>
+    {% for g in all_genres %}
+      <option value="{{ g }}" {% if filters.genre == g %}selected{% endif %}>{{ g }}</option>
     {% endfor %}
-  </div>
-{% endif %}
+  </select>
+  <select name="sort">
+    <option value="new" {% if filters.sort == 'new' %}selected{% endif %}>Новые сначала</option>
+    <option value="old" {% if filters.sort == 'old' %}selected{% endif %}>Старые сначала</option>
+    <option value="title_asc" {% if filters.sort == 'title_asc' %}selected{% endif %}>По названию A→Я</option>
+    <option value="year_desc" {% if filters.sort == 'year_desc' %}selected{% endif %}>Год ↓</option>
+    <option value="year_asc" {% if filters.sort == 'year_asc' %}selected{% endif %}>Год ↑</option>
+  </select>
+  <select name="status">
+    <option value="">Все статусы</option>
+    <option value="not_started" {% if filters.status == 'not_started' %}selected{% endif %}>Не начато</option>
+    <option value="in_progress" {% if filters.status == 'in_progress' %}selected{% endif %}>В процессе</option>
+    <option value="watched" {% if filters.status == 'watched' %}selected{% endif %}>Досмотрено</option>
+  </select>
+</form>
+
+<div class="media-grid-wrap">
+  {% include "_library_grid.html" %}
+</div>
 {% endblock %}

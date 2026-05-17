@@ -1,0 +1,53 @@
+{% if not items %}
+  <section class="empty-state">
+    <p class="eyebrow">Пусто</p>
+    <h2>Ничего не найдено</h2>
+    <p>Попробуйте сменить фильтры или добавить новый magnet.</p>
+    <a class="button primary" href="/add-torrent">Добавить magnet</a>
+  </section>
+{% else %}
+<div class="media-grid">
+  {% for entry in items %}
+    {% set it = entry.item %}
+    <article class="media-card">
+      <a class="media-poster {% if not it.poster_url %}placeholder{% endif %}"
+         href="/media/{{ it.id }}" aria-label="Открыть {{ it.title }}">
+        {% if it.poster_url %}
+          <img src="{{ it.poster_url }}" alt="" loading="lazy">
+        {% else %}
+          <span>{{ it.title[:2] | upper }}</span>
+        {% endif %}
+        {% if it.kind %}
+          <span class="media-card-badge kind">{{ {
+            'movie':'Фильм','series':'Сериал','cartoon':'Мультфильм',
+            'anime':'Аниме','documentary':'Док','show':'Шоу','other':'Другое'
+          }[it.kind] }}</span>
+        {% endif %}
+        {% if entry.status == 'watched' %}
+          <span class="media-card-badge watched" title="Досмотрено">✓</span>
+        {% endif %}
+        {% if entry.status == 'in_progress' and it.duration_seconds %}
+          {% set pct = (entry.position / it.duration_seconds * 100) | round(0) %}
+          <div class="media-card-progress"><div style="width: {{ pct }}%"></div></div>
+        {% endif %}
+      </a>
+      <div class="media-card-body">
+        <h3><a href="/media/{{ it.id }}">{{ it.title }}</a></h3>
+        <p class="media-card-meta">
+          {% if it.year %}{{ it.year }}{% endif %}
+          {% if it.duration_seconds %}
+            {% if it.year %} · {% endif %}
+            {% set total_min = (it.duration_seconds / 60) | int %}
+            {% if total_min >= 60 %}{{ (total_min // 60) }}ч {{ (total_min % 60) }}мин
+            {% else %}{{ total_min }}мин{% endif %}
+          {% endif %}
+        </p>
+        <div class="card-actions">
+          <a class="button secondary compact" href="/media/{{ it.id }}">Смотреть</a>
+          <a class="button ghost compact" href="/api/download/{{ it.id }}">Скачать</a>
+        </div>
+      </div>
+    </article>
+  {% endfor %}
+</div>
+{% endif %}

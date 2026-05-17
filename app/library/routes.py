@@ -2,15 +2,15 @@ import logging
 import shutil
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth.deps import get_current_user
 from app.csrf import verify_csrf
-from app.deps import get_db, get_qbittorrent_client, render
-from app.models import MediaItem, User, WatchProgress
+from app.deps import get_db, get_kinopoisk_client, get_qbittorrent_client, get_tmdb_client, render
+from app.models import Genre, MediaItem, User, WatchProgress
 from app.streaming.ffmpeg_runner import kill as kill_ffmpeg
 from app.streaming.stream_registry import get_registry
 from app.torrents.client import QBittorrentClient, QBittorrentError
@@ -20,14 +20,79 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
+WATCHED_RATIO = 0.65
+
+
+def _compute_status(progress: WatchProgress | None, duration: int | None) -> str:
+    if progress is None or progress.position_seconds <= 0:
+        return "not_started"
+    if duration is None:
+        return "in_progress"
+    if progress.position_seconds >= WATCHED_RATIO * duration:
+        return "watched"
+    return "in_progress"
+
+
 @router.get("/library", response_class=HTMLResponse)
 def library_page(
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    q: str | None = None,
+    kind: str | None = None,
+    genre: str | None = None,
+    sort: str = "new",
+    status: str | None = None,
 ):
-    items = db.scalars(select(MediaItem).order_by(MediaItem.added_at.desc())).all()
-    return render(request, "library.html", {"user": user, "items": items})
+    stmt = select(MediaItem)
+    if q:
+        like = f"%{q}%"
+        stmt = stmt.where(or_(MediaItem.title.ilike(like),
+                              MediaItem.description.ilike(like)))
+    if kind:
+        stmt = stmt.where(MediaItem.kind == kind)
+    if genre:
+        stmt = stmt.where(MediaItem.genres.any(Genre.name == genre))
+
+    if sort == "old":
+        stmt = stmt.order_by(MediaItem.added_at.asc())
+    elif sort == "title_asc":
+        stmt = stmt.order_by(MediaItem.title.asc())
+    elif sort == "year_desc":
+        stmt = stmt.order_by(MediaItem.year.desc().nullslast(), MediaItem.title.asc())
+    elif sort == "year_asc":
+        stmt = stmt.order_by(MediaItem.year.asc().nullsfirst(), MediaItem.title.asc())
+    else:
+        stmt = stmt.order_by(MediaItem.added_at.desc())
+
+    items = db.scalars(stmt).unique().all()
+
+    progresses = {
+        wp.media_id: wp
+        for wp in db.scalars(
+            select(WatchProgress).where(WatchProgress.user_id == user.id)
+        )
+    }
+
+    annotated = []
+    for it in items:
+        wp = progresses.get(it.id)
+        st = _compute_status(wp, it.duration_seconds)
+        if status and st != status:
+            continue
+        annotated.append({"item": it, "status": st,
+                          "position": wp.position_seconds if wp else 0})
+
+    all_genres = [g.name for g in db.scalars(select(Genre).order_by(Genre.name))]
+
+    template = "_library_grid.html" if request.headers.get("HX-Request") else "library.html"
+    return render(request, template, {
+        "user": user,
+        "items": annotated,
+        "filters": {"q": q or "", "kind": kind or "", "genre": genre or "",
+                    "sort": sort, "status": status or ""},
+        "all_genres": all_genres,
+    })
 
 
 @router.get("/media/{media_id}", response_class=HTMLResponse)
