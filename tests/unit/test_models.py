@@ -74,3 +74,24 @@ def test_media_item_genres_m2m_exists():
 def test_watch_progress_has_audio_track_index():
     cols = {c.name for c in WatchProgress.__table__.columns}
     assert "audio_track_index" in cols
+
+
+def test_episode_model_columns():
+    from app.models import Episode
+    cols = {c.name for c in Episode.__table__.columns}
+    required = {
+        "id", "series_id", "season", "episode", "title", "description",
+        "file_path", "size_bytes", "duration_seconds", "audio_tracks",
+        "tmdb_episode_id", "air_date", "added_at",
+    }
+    missing = required - cols
+    assert not missing, f"missing on Episode: {missing}"
+
+
+def test_episode_watch_progress_model_columns():
+    from app.models import EpisodeWatchProgress
+    cols = {c.name for c in EpisodeWatchProgress.__table__.columns}
+    required = {"id", "user_id", "episode_id", "position_seconds",
+                "audio_track_index", "updated_at"}
+    missing = required - cols
+    assert not missing, f"missing on EpisodeWatchProgress: {missing}"

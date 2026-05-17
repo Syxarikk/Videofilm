@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, ForeignKey, Integer, JSON,
+    BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, JSON,
     String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -81,6 +81,14 @@ class MediaItem(Base):
         lazy="selectin",
     )
 
+    episodes: Mapped[list["Episode"]] = relationship(
+        "Episode",
+        primaryjoin="MediaItem.id == foreign(Episode.series_id)",
+        order_by="(Episode.season, Episode.episode)",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
 
 class WatchProgress(Base):
     __tablename__ = "watch_progress"
@@ -92,3 +100,44 @@ class WatchProgress(Base):
     position_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     audio_track_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
+
+
+class Episode(Base):
+    __tablename__ = "episodes"
+    __table_args__ = (UniqueConstraint("series_id", "season", "episode",
+                                         name="ix_episodes_series_season_episode"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    series_id: Mapped[int] = mapped_column(
+        ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    season: Mapped[int] = mapped_column(Integer, nullable=False)
+    episode: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audio_tracks: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    tmdb_episode_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    air_date: Mapped["Date | None"] = mapped_column(Date, nullable=True)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                 nullable=False, default=_now)
+
+
+class EpisodeWatchProgress(Base):
+    __tablename__ = "episode_watch_progress"
+    __table_args__ = (UniqueConstraint("user_id", "episode_id",
+                                         name="ix_episode_watch_progress_user_episode"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    episode_id: Mapped[int] = mapped_column(
+        ForeignKey("episodes.id", ondelete="CASCADE"), nullable=False
+    )
+    position_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    audio_track_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                  nullable=False, default=_now, onupdate=_now)
