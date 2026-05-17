@@ -33,11 +33,25 @@
     hls = new Hls();
     hls.loadSource(src);
     hls.attachMedia(video);
+    let recoverAttempts = 0;
     hls.on(Hls.Events.ERROR, (e, data) => {
       console.error("HLS error:", data);
-      if (data.fatal) {
-        document.querySelector('main').innerHTML += '<p class="error">Поток упал. Обновите страницу.</p>';
+      if (!data.fatal) return;
+      if (recoverAttempts < 1) {
+        recoverAttempts++;
+        // Серверный watchdog мог убить ffmpeg → запрос плейлиста перезапустит его.
+        setTimeout(() => {
+          try { hls.startLoad(); } catch (err) { console.warn('startLoad failed', err); }
+        }, 1000);
+        // Сбрасываем счётчик через 30с — если стрим работает стабильно, следующий fatal снова попадёт в recovery.
+        setTimeout(() => { recoverAttempts = 0; }, 30000);
+        return;
       }
+      // Второй fatal за 30с → показать баннер
+      const banner = document.createElement('p');
+      banner.className = 'error';
+      banner.textContent = 'Поток упал. Обновите страницу.';
+      document.querySelector('main').appendChild(banner);
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = src;
