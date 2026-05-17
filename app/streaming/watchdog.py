@@ -8,7 +8,7 @@ from app.streaming.stream_registry import StreamRegistry, get_registry
 
 log = logging.getLogger(__name__)
 
-IDLE_THRESHOLD_SECONDS = 60.0
+IDLE_THRESHOLD_SECONDS = 300.0
 SWEEP_INTERVAL_SECONDS = 15.0
 
 

@@ -6,6 +6,13 @@ from unittest.mock import MagicMock
 
 from app.streaming.stream_registry import StreamHandle, StreamRegistry
 from app.streaming.watchdog import sweep_idle
+from app.streaming import watchdog
+
+
+def test_idle_threshold_seconds_is_300():
+    # Защита от регрессии: порог watchdog должен быть 300с, чтобы
+    # переживать паузу + временную потерю heartbeat.
+    assert watchdog.IDLE_THRESHOLD_SECONDS == 300.0
 
 
 def _assert_process_killed(proc):
