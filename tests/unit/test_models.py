@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from app.db import Base, make_engine, make_session_factory
-from app.models import MediaItem, Session as UserSession, User, WatchProgress
+from app.models import MediaItem, Session as UserSession, User, WatchProgress, Genre, MediaItemGenre
 
 
 def setup_db():
@@ -48,3 +48,29 @@ def test_media_item_and_watch_progress_models_exist():
         s.commit()
         assert m.id is not None
         assert w.position_seconds == 0
+
+
+def test_media_item_has_metadata_fields():
+    cols = {c.name for c in MediaItem.__table__.columns}
+    required = {
+        "duration_seconds", "description", "poster_url", "year",
+        "kind", "tmdb_id", "kinopoisk_id", "match_status", "match_source",
+        "audio_tracks",
+    }
+    missing = required - cols
+    assert not missing, f"missing fields on MediaItem: {missing}"
+
+
+def test_genre_model_exists():
+    cols = {c.name for c in Genre.__table__.columns}
+    assert cols == {"id", "name"}
+
+
+def test_media_item_genres_m2m_exists():
+    cols = {c.name for c in MediaItemGenre.__table__.columns}
+    assert cols == {"media_id", "genre_id"}
+
+
+def test_watch_progress_has_audio_track_index():
+    cols = {c.name for c in WatchProgress.__table__.columns}
+    assert "audio_track_index" in cols

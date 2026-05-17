@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger, Boolean, DateTime, ForeignKey, Integer, JSON,
+    String, Text, UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -31,16 +34,52 @@ class Session(Base):
     is_partial: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
+class Genre(Base):
+    __tablename__ = "genres"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+
+
+class MediaItemGenre(Base):
+    __tablename__ = "media_item_genres"
+
+    media_id: Mapped[int] = mapped_column(
+        ForeignKey("media_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    genre_id: Mapped[int] = mapped_column(
+        ForeignKey("genres.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+
+
 class MediaItem(Base):
     __tablename__ = "media_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     torrent_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False, index=True)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    added_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    added_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now)
+
+    # — каталог-метаданные (Spec 1) —
+    duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    poster_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    year: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    kind: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    tmdb_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    kinopoisk_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    match_status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    match_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    audio_tracks: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    genres: Mapped[list["Genre"]] = relationship(
+        "Genre",
+        secondary="media_item_genres",
+        lazy="selectin",
+    )
 
 
 class WatchProgress(Base):
@@ -51,4 +90,5 @@ class WatchProgress(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     media_id: Mapped[int] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False)
     position_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    audio_track_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
