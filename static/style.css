@@ -921,3 +921,113 @@ td form {
   opacity: 0.7;
   margin: 4px 0 8px;
 }
+
+/* === Media page header === */
+.media-header {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
+  margin: 24px 0;
+}
+.media-header-poster img,
+.media-header-poster .poster-placeholder {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.media-header-poster .poster-placeholder {
+  background: rgba(255, 255, 255, 0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem;
+  font-weight: bold;
+}
+.media-description {
+  margin: 12px 0;
+  line-height: 1.5;
+}
+.media-header-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 16px;
+}
+.media-source-badge {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  background: rgba(64, 132, 255, 0.18);
+  border-radius: 12px;
+}
+.media-size {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+@media (max-width: 640px) {
+  .media-header { grid-template-columns: 1fr; }
+  .media-header-poster { max-width: 60%; margin: 0 auto; }
+}
+
+/* === Modals === */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: #1e2230;
+  padding: 24px;
+  border-radius: 8px;
+  min-width: 360px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+}
+.modal h2 { margin-top: 0; }
+.modal label {
+  display: block;
+  margin: 12px 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+.modal label input,
+.modal label textarea,
+.modal label select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: inherit;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 16px;
+}
+.match-results {
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: 400px; overflow-y: auto;
+  margin: 12px 0;
+}
+.match-result {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+.match-result img {
+  width: 60px; height: 90px;
+  object-fit: cover; border-radius: 4px;
+}
+.match-result h4 { margin: 0; font-size: 1rem; }
+.match-result-source {
+  font-size: 0.78rem; opacity: 0.6; margin: 4px 0 0;
+}
