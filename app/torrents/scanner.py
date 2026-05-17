@@ -57,7 +57,7 @@ def scan_once(qb: _QbProto, session: Session) -> int:
             continue
         item = MediaItem(
             torrent_hash=t.hash,
-            title=parse_title(video.name),
+            title=parse_title(video.name).title,
             file_path=str(video),
             size_bytes=video.stat().st_size,
             added_by=None,  # неизвестно, кто добавил — qBittorrent не хранит

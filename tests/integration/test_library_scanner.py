@@ -47,7 +47,7 @@ def test_scan_once_creates_media_item_for_completed_torrent(db_factory, tmp_path
         items = s.scalars(select(MediaItem)).all()
         assert len(items) == 1
         m = items[0]
-        assert m.title == "Some Movie (2024)"
+        assert m.title == "Some Movie"  # ParsedTitle: title без года, год отдельным полем
         assert m.file_path.endswith(".mp4")
         assert m.size_bytes == 5_000_000
         assert m.torrent_hash == "abc"
