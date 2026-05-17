@@ -142,3 +142,47 @@ def test_get_movie_documentary(client):
     m = client.get_movie(4)
     assert m.kind == "documentary"
     assert m.poster_url is None
+
+
+from app.metadata.types import TmdbEpisodeMeta
+
+
+@respx.mock
+def test_get_tv_season_parses_episodes(client):
+    respx.get("https://api.themoviedb.org/3/tv/1396/season/1").mock(
+        return_value=httpx.Response(200, json={
+            "episodes": [
+                {"id": 62085, "episode_number": 1, "name": "Pilot",
+                 "overview": "Walter White...", "air_date": "2008-01-20"},
+                {"id": 62086, "episode_number": 2, "name": "Cat's in the Bag...",
+                 "overview": "Walt and Jesse...", "air_date": "2008-01-27"},
+            ],
+        })
+    )
+    result = client.get_tv_season(1396, 1)
+    assert 1 in result and 2 in result
+    assert result[1].name == "Pilot"
+    assert result[1].id == 62085
+    assert result[1].air_date == "2008-01-20"
+    assert result[2].overview == "Walt and Jesse..."
+
+
+@respx.mock
+def test_get_tv_season_returns_empty_on_404(client):
+    respx.get("https://api.themoviedb.org/3/tv/9999/season/1").mock(
+        return_value=httpx.Response(404)
+    )
+    assert client.get_tv_season(9999, 1) == {}
+
+
+@respx.mock
+def test_get_tv_season_handles_missing_fields(client):
+    respx.get("https://api.themoviedb.org/3/tv/1/season/1").mock(
+        return_value=httpx.Response(200, json={
+            "episodes": [{"id": 1, "episode_number": 1}]
+        })
+    )
+    result = client.get_tv_season(1, 1)
+    assert result[1].name is None
+    assert result[1].overview is None
+    assert result[1].air_date is None

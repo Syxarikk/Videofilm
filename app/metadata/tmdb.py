@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 import httpx
 
-from app.metadata.types import KindLiteral, MetadataMatch
+from app.metadata.types import KindLiteral, MetadataMatch, TmdbEpisodeMeta
 
 log = logging.getLogger(__name__)
 
@@ -122,3 +122,28 @@ class TmdbClient:
             genres=genres,
             score=1.0,
         )
+
+    def get_tv_season(self, tv_id: int, season_number: int) -> dict[int, TmdbEpisodeMeta]:
+        """Возвращает {episode_number: meta} для одного сезона. {} при ошибке."""
+        try:
+            r = self._client.get(f"/tv/{tv_id}/season/{season_number}",
+                                 params={"language": "ru-RU"})
+            r.raise_for_status()
+        except (httpx.HTTPError, httpx.TimeoutException) as e:
+            log.warning("TMDB get_tv_season(%d, %d) failed: %s",
+                        tv_id, season_number, e)
+            return {}
+        episodes = r.json().get("episodes") or []
+        result: dict[int, TmdbEpisodeMeta] = {}
+        for ep in episodes:
+            n = ep.get("episode_number")
+            if n is None:
+                continue
+            result[n] = TmdbEpisodeMeta(
+                id=ep.get("id"),
+                episode_number=n,
+                name=ep.get("name") or None,
+                overview=ep.get("overview") or None,
+                air_date=ep.get("air_date") or None,
+            )
+        return result

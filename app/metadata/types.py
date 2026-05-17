@@ -29,3 +29,13 @@ class AudioTrack:
     language: str | None
     title: str | None
     channels: int
+
+
+@dataclass(frozen=True, slots=True)
+class TmdbEpisodeMeta:
+    """Метаданные одного эпизода из TMDB /tv/{id}/season/{n}."""
+    id: int
+    episode_number: int
+    name: str | None
+    overview: str | None
+    air_date: str | None  # ISO "YYYY-MM-DD"
