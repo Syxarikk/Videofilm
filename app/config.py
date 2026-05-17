@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     qbittorrent_username: str
     qbittorrent_password: str
     hls_work_root: str = _tempfile.gettempdir()
+    tmdb_api_key: str | None = None
+    kinopoisk_api_key: str | None = None
 
     @field_validator("session_secret")
     @classmethod
