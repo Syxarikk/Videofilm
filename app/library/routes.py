@@ -178,3 +178,185 @@ def delete_media(
     db.commit()
 
     return RedirectResponse("/library", status_code=303)
+
+
+# === Edit form & endpoint ===
+
+@router.get("/api/media/{media_id}/edit-form", response_class=HTMLResponse)
+def edit_form(
+    media_id: int,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    item = db.get(MediaItem, media_id)
+    if item is None:
+        raise HTTPException(status_code=404)
+    all_genres = [g.name for g in db.scalars(select(Genre).order_by(Genre.name))]
+    return render(request, "_media_edit_modal.html", {
+        "user": user, "item": item, "all_genres": all_genres,
+    })
+
+
+@router.post("/api/media/{media_id}/edit")
+def edit_media(
+    media_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    title: Annotated[str, Form()],
+    kind: Annotated[str, Form()],
+    description: Annotated[str, Form()] = "",
+    genres: Annotated[str, Form()] = "",
+    poster_url: Annotated[str, Form()] = "",
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
+):
+    item = db.get(MediaItem, media_id)
+    if item is None:
+        raise HTTPException(status_code=404)
+
+    item.title = title.strip() or item.title
+    item.description = description.strip() or None
+    if kind in {"movie", "series", "cartoon", "anime", "documentary", "show", "other"}:
+        item.kind = kind
+    item.poster_url = poster_url.strip() or None
+
+    new_names = [g.strip() for g in genres.split(",") if g.strip()]
+    item.genres.clear()
+    for name in new_names:
+        existing = db.scalars(select(Genre).where(Genre.name == name)).first()
+        if existing is None:
+            existing = Genre(name=name)
+            db.add(existing); db.flush()
+        item.genres.append(existing)
+
+    item.match_status = "manual"
+    item.match_source = "manual"
+    db.commit()
+
+    return Response(status_code=204, headers={"HX-Redirect": f"/media/{media_id}"})
+
+
+# === Re-match endpoints ===
+
+@router.get("/api/media/{media_id}/match/search-form", response_class=HTMLResponse)
+def match_search_form(
+    media_id: int,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    item = db.get(MediaItem, media_id)
+    if item is None:
+        raise HTTPException(status_code=404)
+    return render(request, "_match_dialog.html", {"user": user, "item": item, "results": None})
+
+
+@router.post("/api/media/{media_id}/match/search", response_class=HTMLResponse)
+def match_search(
+    media_id: int,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    query: Annotated[str, Form()],
+    year: Annotated[str, Form()] = "",
+    kind: Annotated[str, Form()] = "",
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
+):
+    item = db.get(MediaItem, media_id)
+    if item is None:
+        raise HTTPException(status_code=404)
+
+    parsed_year = int(year) if year.strip().isdigit() else None
+    hint = "tv" if kind == "series" else (
+        "movie" if kind in ("movie", "cartoon", "anime", "documentary", "show", "other") else None
+    )
+
+    results = []
+    tmdb = get_tmdb_client()
+    if tmdb is not None:
+        raw = tmdb.search(query, year=parsed_year, kind_hint=hint)
+        for r in raw[:10]:
+            results.append({
+                "source": "tmdb",
+                "external_id": r.get("id"),
+                "title": r.get("title") or r.get("name") or "(?)",
+                "year": (r.get("release_date") or r.get("first_air_date") or "")[:4] or None,
+                "poster": (("https://image.tmdb.org/t/p/w92" + r["poster_path"])
+                           if r.get("poster_path") else None),
+                "kind": "tv" if (r.get("media_type") == "tv" or hint == "tv") else "movie",
+            })
+
+    kp = get_kinopoisk_client()
+    if kp is not None and kp.quota_ok():
+        raw = kp.search(query, year=parsed_year)
+        for r in raw[:10]:
+            results.append({
+                "source": "kinopoisk",
+                "external_id": r.get("filmId") or r.get("kinopoiskId"),
+                "title": r.get("nameRu") or r.get("nameOriginal") or "(?)",
+                "year": str(r.get("year")) if r.get("year") else None,
+                "poster": r.get("posterUrlPreview") or r.get("posterUrl"),
+                "kind": r.get("type", "FILM"),
+            })
+
+    return render(request, "_match_dialog.html", {
+        "user": user, "item": item, "results": results, "query": query,
+    })
+
+
+@router.post("/api/media/{media_id}/match/apply")
+def match_apply(
+    media_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    source: Annotated[str, Form()],
+    external_id: Annotated[int, Form()],
+    _csrf: Annotated[None, Depends(verify_csrf)] = None,
+):
+    item = db.get(MediaItem, media_id)
+    if item is None:
+        raise HTTPException(status_code=404)
+
+    match = None
+    if source == "tmdb":
+        client = get_tmdb_client()
+        if client is None:
+            raise HTTPException(status_code=400, detail="TMDB не сконфигурирован")
+        match = client.get_movie(external_id) or client.get_tv(external_id)
+    elif source == "kinopoisk":
+        client = get_kinopoisk_client()
+        if client is None:
+            raise HTTPException(status_code=400, detail="Kinopoisk не сконфигурирован")
+        match = client.get_film(external_id)
+    else:
+        raise HTTPException(status_code=400, detail="unknown source")
+
+    if match is None:
+        raise HTTPException(status_code=502, detail="не удалось получить детали")
+
+    item.title = match.title
+    item.description = match.description
+    item.poster_url = match.poster_url
+    item.year = match.year
+    item.kind = match.kind
+    if source == "tmdb":
+        item.tmdb_id = match.external_id
+        item.kinopoisk_id = None
+    else:
+        item.kinopoisk_id = match.external_id
+        item.tmdb_id = None
+    item.match_source = source
+    item.match_status = "matched"
+
+    item.genres.clear()
+    for gname in match.genres:
+        normalized = gname.strip()
+        if not normalized:
+            continue
+        existing = db.scalars(select(Genre).where(Genre.name == normalized)).first()
+        if existing is None:
+            existing = Genre(name=normalized); db.add(existing); db.flush()
+        item.genres.append(existing)
+
+    db.commit()
+    return Response(status_code=204, headers={"HX-Redirect": f"/media/{media_id}"})

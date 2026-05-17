@@ -1,0 +1,58 @@
+<div class="modal-backdrop" onclick="if(event.target===this) this.remove()">
+  <div class="modal">
+    <h2>Исправить совпадение</h2>
+    <form hx-post="/api/media/{{ item.id }}/match/search"
+          hx-target=".modal" hx-swap="outerHTML">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Запрос
+        <input type="text" name="query" value="{{ query or item.title }}" required autofocus>
+      </label>
+      <div style="display: flex; gap: 8px;">
+        <label style="flex: 1;">Год
+          <input type="number" name="year" value="{{ item.year or '' }}" min="1900" max="2100">
+        </label>
+        <label style="flex: 1;">Тип
+          <select name="kind">
+            <option value="">Любой</option>
+            <option value="movie">Фильм</option>
+            <option value="series">Сериал</option>
+          </select>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="button primary">Искать</button>
+      </div>
+    </form>
+
+    {% if results is not none %}
+      <hr>
+      <h3>Результаты</h3>
+      {% if not results %}
+        <p>Ничего не найдено. Попробуйте другой запрос.</p>
+      {% else %}
+        <div class="match-results">
+          {% for r in results %}
+            <div class="match-result">
+              {% if r.poster %}<img src="{{ r.poster }}" alt="" loading="lazy">{% else %}<div></div>{% endif %}
+              <div class="match-result-body">
+                <h4>{{ r.title }}{% if r.year %} ({{ r.year }}){% endif %}</h4>
+                <p class="match-result-source">{{ r.source | upper }}</p>
+              </div>
+              <form hx-post="/api/media/{{ item.id }}/match/apply">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="source" value="{{ r.source }}">
+                <input type="hidden" name="external_id" value="{{ r.external_id }}">
+                <button type="submit" class="button secondary compact">Выбрать</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="modal-actions">
+      <button type="button" class="button ghost"
+              onclick="document.querySelector('.modal-backdrop').remove()">Закрыть</button>
+    </div>
+  </div>
+</div>

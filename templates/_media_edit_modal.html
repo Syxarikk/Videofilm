@@ -1,0 +1,49 @@
+<div class="modal-backdrop" onclick="if(event.target===this) this.remove()">
+  <div class="modal">
+    <h2>Редактировать</h2>
+    <form hx-post="/api/media/{{ item.id }}/edit">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <label>Название
+        <input type="text" name="title" value="{{ item.title }}" required>
+      </label>
+
+      <label>Описание
+        <textarea name="description" rows="4">{{ item.description or '' }}</textarea>
+      </label>
+
+      <label>Тип
+        <select name="kind">
+          <option value="movie" {% if item.kind == 'movie' %}selected{% endif %}>Фильм</option>
+          <option value="series" {% if item.kind == 'series' %}selected{% endif %}>Сериал</option>
+          <option value="cartoon" {% if item.kind == 'cartoon' %}selected{% endif %}>Мультфильм</option>
+          <option value="anime" {% if item.kind == 'anime' %}selected{% endif %}>Аниме</option>
+          <option value="documentary" {% if item.kind == 'documentary' %}selected{% endif %}>Документальное</option>
+          <option value="show" {% if item.kind == 'show' %}selected{% endif %}>Шоу</option>
+          <option value="other" {% if item.kind == 'other' %}selected{% endif %}>Другое</option>
+        </select>
+      </label>
+
+      <label>Жанры (через запятую)
+        <input type="text" name="genres"
+               value="{{ item.genres | map(attribute='name') | join(', ') }}"
+               list="all-genres-datalist"
+               placeholder="Боевик, Драма">
+        <datalist id="all-genres-datalist">
+          {% for g in all_genres %}<option value="{{ g }}">{% endfor %}
+        </datalist>
+      </label>
+
+      <label>URL постера
+        <input type="url" name="poster_url" value="{{ item.poster_url or '' }}"
+               placeholder="https://example.com/poster.jpg">
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="button ghost"
+                onclick="document.querySelector('.modal-backdrop').remove()">Отмена</button>
+        <button type="submit" class="button primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
