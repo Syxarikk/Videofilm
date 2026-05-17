@@ -792,3 +792,61 @@ td form {
     padding: 0.75rem;
   }
 }
+
+/* === Resume banner === */
+.resume-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(64, 132, 255, 0.12);
+  border-left: 3px solid #4084ff;
+  margin: 12px 0;
+  font-size: 0.95rem;
+}
+.resume-banner button {
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.resume-banner button:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* === Audio selector === */
+.audio-tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+  font-size: 0.9rem;
+}
+.audio-tracks .audio-label {
+  font-weight: 500;
+  opacity: 0.7;
+  margin-right: 4px;
+}
+.audio-track {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+.audio-track:hover { background: rgba(255, 255, 255, 0.1); }
+.audio-track.active {
+  background: #4084ff;
+  border-color: #4084ff;
+  color: #fff;
+}
+.audio-track .lang {
+  opacity: 0.7;
+  margin-left: 4px;
+  font-size: 0.85em;
+}

@@ -9,8 +9,24 @@
   </div>
 </section>
 
+{% if saved_position_seconds and saved_position_seconds > 0
+      and (not item.duration_seconds or saved_position_seconds < 0.65 * item.duration_seconds) %}
+<section class="resume-banner">
+  <span>⏱ Продолжить с <span id="resume-time"></span></span>
+  <button id="restart-btn" type="button">Сначала</button>
+</section>
+<script>
+(function () {
+  const sec = {{ saved_position_seconds }};
+  const m = Math.floor(sec / 60), s = sec % 60;
+  document.getElementById('resume-time').textContent = `${m}:${String(s).padStart(2,'0')}`;
+})();
+</script>
+{% endif %}
+
 <section class="player-shell">
   <video id="player" controls preload="metadata"></video>
+  <div id="audio-tracks" class="audio-tracks"></div>
 </section>
 
 <section class="action-bar">
@@ -25,29 +41,38 @@
 <script src="/static/hls.min.js"></script>
 <script>
 (function() {
+  const MEDIA_ID = {{ item.id }};
+  const SAVED_POSITION = {{ saved_position_seconds or 0 }};
+  const SAVED_AUDIO = {{ saved_audio_track_index|tojson }};
   const video = document.getElementById('player');
-  const src = '/api/stream/{{ item.id }}/playlist.m3u8';
+  const src = '/api/stream/' + MEDIA_ID + '/master.m3u8';
 
   let hls = null;
+  let recoverAttempts = 0;
+
   if (Hls.isSupported()) {
     hls = new Hls();
     hls.loadSource(src);
     hls.attachMedia(video);
-    let recoverAttempts = 0;
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      if (hls.audioTracks && hls.audioTracks.length > 1) {
+        renderAudioSelector(hls);
+      }
+      if (SAVED_AUDIO != null && hls.audioTracks && SAVED_AUDIO < hls.audioTracks.length) {
+        hls.audioTrack = SAVED_AUDIO;
+      }
+    });
     hls.on(Hls.Events.ERROR, (e, data) => {
       console.error("HLS error:", data);
       if (!data.fatal) return;
       if (recoverAttempts < 1) {
         recoverAttempts++;
-        // Серверный watchdog мог убить ffmpeg → запрос плейлиста перезапустит его.
         setTimeout(() => {
           try { hls.startLoad(); } catch (err) { console.warn('startLoad failed', err); }
         }, 1000);
-        // Сбрасываем счётчик через 30с — если стрим работает стабильно, следующий fatal снова попадёт в recovery.
         setTimeout(() => { recoverAttempts = 0; }, 30000);
         return;
       }
-      // Второй fatal за 30с → показать баннер
       const banner = document.createElement('p');
       banner.className = 'error';
       banner.textContent = 'Поток упал. Обновите страницу.';
@@ -59,15 +84,71 @@
     document.querySelector('main').innerHTML += '<p class="error">Браузер не поддерживает HLS. Скачайте оригинал.</p>';
   }
 
-  // Heartbeat — каждые 15с, даже на паузе (чтобы watchdog не убил стрим).
+  // Восстановление сохранённой позиции
+  video.addEventListener('loadedmetadata', () => {
+    if (SAVED_POSITION > 0 && SAVED_POSITION < video.duration - 30) {
+      video.currentTime = SAVED_POSITION;
+    }
+  });
+
+  // Кнопка "Сначала"
+  const restartBtn = document.getElementById('restart-btn');
+  if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+      video.currentTime = 0;
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({media_id: MEDIA_ID, position_seconds: 0}),
+      }).catch(() => {});
+    });
+  }
+
+  // Heartbeat — каждые 15с, даже на паузе
   setInterval(() => {
     if (video.ended || isNaN(video.currentTime)) return;
+    const payload = {media_id: MEDIA_ID, position_seconds: Math.floor(video.currentTime)};
+    if (hls && hls.audioTrack >= 0) payload.audio_track_index = hls.audioTrack;
     fetch('/api/progress', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({media_id: {{ item.id }}, position_seconds: Math.floor(video.currentTime)}),
+      body: JSON.stringify(payload),
     }).catch(e => console.warn('progress save failed', e));
   }, 15000);
+
+  // === Audio selector ===
+  function renderAudioSelector(hlsInst) {
+    const c = document.getElementById('audio-tracks');
+    if (!c) return;
+    c.innerHTML = '<span class="audio-label">🎧 Озвучка:</span>' + hlsInst.audioTracks.map(t =>
+      `<button data-track="${t.id}" class="audio-track${t.id === hlsInst.audioTrack ? ' active' : ''}" type="button">`
+      + escapeHtml(humanize(t.name || 'Track ' + (t.id + 1)))
+      + (t.lang && t.lang !== 'und' ? ` <span class="lang">${escapeHtml(t.lang)}</span>` : '')
+      + '</button>'
+    ).join('');
+    c.onclick = e => {
+      const btn = e.target.closest('[data-track]');
+      if (!btn) return;
+      const id = parseInt(btn.dataset.track, 10);
+      hlsInst.audioTrack = id;
+      c.querySelectorAll('.audio-track').forEach(b => b.classList.toggle('active', b === btn));
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          media_id: MEDIA_ID,
+          position_seconds: Math.floor(video.currentTime || 0),
+          audio_track_index: id,
+        }),
+      }).catch(() => {});
+    };
+  }
+  function humanize(s) { return s.replace(/_/g, ' '); }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => (
+      {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[ch]
+    ));
+  }
 })();
 </script>
 {% endblock %}
