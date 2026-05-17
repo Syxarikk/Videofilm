@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.deps import get_current_user
 from app.csrf import verify_csrf
 from app.deps import get_db, get_qbittorrent_client, render
-from app.models import MediaItem, User
+from app.models import MediaItem, User, WatchProgress
 from app.streaming.ffmpeg_runner import kill as kill_ffmpeg
 from app.streaming.stream_registry import get_registry
 from app.torrents.client import QBittorrentClient, QBittorrentError
@@ -40,7 +40,42 @@ def media_page(
     item = db.get(MediaItem, media_id)
     if item is None:
         raise HTTPException(status_code=404)
-    return render(request, "media.html", {"user": user, "item": item})
+
+    # Лениво дозаполняем duration_seconds и audio_tracks для старых записей.
+    needs_commit = False
+    if item.duration_seconds is None:
+        from app.metadata.ffprobe import get_duration_seconds
+        dur = get_duration_seconds(item.file_path)
+        if dur is not None:
+            item.duration_seconds = dur
+            needs_commit = True
+    if item.audio_tracks is None:
+        from app.metadata.ffprobe import probe_audio_tracks
+        tracks = probe_audio_tracks(item.file_path)
+        item.audio_tracks = [
+            {"index": a.index, "codec": a.codec, "language": a.language,
+             "title": a.title, "channels": a.channels}
+            for a in tracks
+        ]
+        needs_commit = True
+    if needs_commit:
+        db.commit()
+
+    progress = db.scalars(
+        select(WatchProgress).where(
+            WatchProgress.user_id == user.id,
+            WatchProgress.media_id == media_id,
+        )
+    ).first()
+    saved_position = progress.position_seconds if progress else 0
+    saved_audio_track = progress.audio_track_index if progress else None
+
+    return render(request, "media.html", {
+        "user": user,
+        "item": item,
+        "saved_position_seconds": saved_position,
+        "saved_audio_track_index": saved_audio_track,
+    })
 
 
 @router.post("/api/media/{media_id}/delete")
