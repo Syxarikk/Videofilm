@@ -8,7 +8,7 @@ from typing import Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import MediaItem
+from app.models import Genre, MediaItem
 from app.torrents.title_parser import parse_title
 from app.torrents.types import TorrentInfo
 
@@ -36,8 +36,14 @@ def _find_largest_video(content_path: str) -> Path | None:
     return max(candidates, key=lambda f: f.stat().st_size)
 
 
-def scan_once(qb: _QbProto, session: Session) -> int:
-    """Один проход. Возвращает число добавленных media_items."""
+def scan_once(qb: _QbProto, session: Session, *, tmdb=None, kinopoisk=None) -> int:
+    """Один проход. Возвращает число добавленных media_items.
+
+    tmdb/kinopoisk — необязательные клиенты (None ⇒ авто-матч пропускается).
+    """
+    from app.metadata.ffprobe import get_duration_seconds, probe_audio_tracks
+    from app.metadata.matcher import find_match
+
     try:
         torrents = qb.list_torrents()
     except Exception as e:  # ловим всё, чтобы не уронить фоновую задачу
@@ -55,13 +61,59 @@ def scan_once(qb: _QbProto, session: Session) -> int:
         if video is None:
             log.info("scan_once: no video file in %s, skipping", t.content_path)
             continue
+
+        parsed = parse_title(video.name)
+        duration = get_duration_seconds(str(video))
+        audio = probe_audio_tracks(str(video))
+        audio_dicts = [
+            {"index": a.index, "codec": a.codec, "language": a.language,
+             "title": a.title, "channels": a.channels}
+            for a in audio
+        ]
+
+        default_kind = "series" if parsed.kind_hint == "tv" else "movie"
+
         item = MediaItem(
             torrent_hash=t.hash,
-            title=parse_title(video.name).title,
+            title=parsed.title,
             file_path=str(video),
             size_bytes=video.stat().st_size,
-            added_by=None,  # неизвестно, кто добавил — qBittorrent не хранит
+            added_by=None,
+            duration_seconds=duration,
+            audio_tracks=audio_dicts,
+            kind=default_kind,
+            match_status="pending",
         )
+
+        match = find_match(parsed, tmdb=tmdb, kinopoisk=kinopoisk)
+        if match is not None:
+            item.title = match.title
+            item.description = match.description
+            item.poster_url = match.poster_url
+            item.year = match.year
+            item.kind = match.kind
+            if match.source == "tmdb":
+                item.tmdb_id = match.external_id
+            else:
+                item.kinopoisk_id = match.external_id
+            item.match_source = match.source
+            item.match_status = "matched"
+
+            for gname in match.genres:
+                normalized = gname.strip()
+                if not normalized:
+                    continue
+                existing = session.scalars(
+                    select(Genre).where(Genre.name == normalized)
+                ).first()
+                if existing is None:
+                    existing = Genre(name=normalized)
+                    session.add(existing)
+                    session.flush()
+                item.genres.append(existing)
+        else:
+            item.match_status = "failed"
+
         session.add(item)
         added += 1
     return added
@@ -71,12 +123,15 @@ async def scanner_loop(
     qb: _QbProto,
     factory: sessionmaker[Session],
     interval_seconds: float = 10.0,
+    *,
+    tmdb=None,
+    kinopoisk=None,
 ) -> None:
     """Бесконечный цикл, вызывается из startup-event FastAPI."""
     while True:
         try:
             with factory() as s:
-                added = scan_once(qb, s)
+                added = scan_once(qb, s, tmdb=tmdb, kinopoisk=kinopoisk)
                 s.commit()
             if added:
                 log.info("scanner: added %d new media item(s)", added)

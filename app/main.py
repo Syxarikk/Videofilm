@@ -9,7 +9,7 @@ from starlette.requests import Request as StarletteRequest
 
 from app.admin.routes import router as admin_router
 from app.auth.routes import router as auth_router
-from app.deps import get_db_factory, get_qbittorrent_client
+from app.deps import get_db_factory, get_kinopoisk_client, get_qbittorrent_client, get_tmdb_client
 from app.download.routes import api_router as download_api_router
 from app.library.routes import router as library_router
 from app.streaming.routes import api_router as streaming_api_router, progress_router as streaming_progress_router
@@ -23,7 +23,11 @@ async def lifespan(app: FastAPI):
     # Startup: запускаем фоновые задачи — scanner и watchdog.
     # В тестах TestClient() запустит lifespan, но фоновые таски ловят все исключения.
     scanner_task = asyncio.create_task(
-        scanner_loop(get_qbittorrent_client(), get_db_factory(), interval_seconds=10.0)
+        scanner_loop(
+            get_qbittorrent_client(), get_db_factory(),
+            interval_seconds=10.0,
+            tmdb=get_tmdb_client(), kinopoisk=get_kinopoisk_client(),
+        )
     )
     watchdog_task = asyncio.create_task(watchdog_loop())
     try:

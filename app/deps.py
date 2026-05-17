@@ -60,3 +60,21 @@ from app.torrents.client import QBittorrentClient
 def get_qbittorrent_client() -> QBittorrentClient:
     s = get_settings()
     return QBittorrentClient(s.qbittorrent_url, s.qbittorrent_username, s.qbittorrent_password)
+
+
+@lru_cache(maxsize=1)
+def get_tmdb_client():
+    from app.metadata.tmdb import TmdbClient
+    s = get_settings()
+    if not s.tmdb_api_key:
+        return None
+    return TmdbClient(s.tmdb_api_key)
+
+
+@lru_cache(maxsize=1)
+def get_kinopoisk_client():
+    from app.metadata.kinopoisk import KinopoiskClient
+    s = get_settings()
+    if not s.kinopoisk_api_key:
+        return None
+    return KinopoiskClient(s.kinopoisk_api_key)
