@@ -149,3 +149,33 @@ def test_segment_response_has_no_store_cache(client, db_factory, csrf_for):
     assert seg_name
     r2 = client.get(f"/api/stream/{mid}/{seg_name}", cookies={"session": cookie})
     assert "no-store" in r2.headers.get("cache-control", "").lower()
+
+
+def test_progress_endpoint_touches_stream_registry(client, db_factory, csrf_for):
+    """heartbeat при паузе должен touch'ить registry, чтобы watchdog не убил стрим"""
+    cookie = _logged_in(client, db_factory, csrf_for)
+    mid = _create_media(db_factory, SAMPLE)
+
+    # Стартуем стрим
+    r = client.get(f"/api/stream/{mid}/playlist.m3u8", cookies={"session": cookie})
+    assert r.status_code == 200
+
+    reg = get_registry()
+    handle = next((h for h in reg.all_streams() if h.media_id == mid), None)
+    assert handle is not None
+    old_access = handle.last_access
+
+    # Имитируем heartbeat на паузе (POST /api/progress)
+    import time
+    time.sleep(0.05)
+    r = client.post(
+        "/api/progress",
+        json={"media_id": mid, "position_seconds": 100},
+        cookies={"session": cookie},
+    )
+    assert r.status_code == 204
+
+    # last_access должен обновиться
+    handle2 = next((h for h in reg.all_streams() if h.media_id == mid), None)
+    assert handle2 is not None
+    assert handle2.last_access > old_access
