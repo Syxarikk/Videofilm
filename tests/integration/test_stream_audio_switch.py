@@ -18,7 +18,7 @@ def _clear_registry():
         if h.process is not None:
             from app.streaming.ffmpeg_runner import kill
             kill(h.process)
-        reg.unregister(h.media_id, h.user_id)
+        reg.unregister(h.target_id, h.user_id)
 
 
 @pytest.mark.skipif(not MULTI_AUDIO.exists(),

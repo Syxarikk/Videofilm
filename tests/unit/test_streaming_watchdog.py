@@ -36,13 +36,13 @@ def test_sweep_idle_kills_old_streams_and_unregisters():
     work_dir = tempfile.mkdtemp(prefix="watchdog_test_")
     proc = MagicMock()
     proc.poll.return_value = None  # «жив»
-    handle = StreamHandle(media_id=1, user_id=2, work_dir=work_dir, process=proc)
+    handle = StreamHandle(target_id="m:1", user_id=2, work_dir=work_dir, process=proc)
     reg.register(handle)
     object.__setattr__(handle, "last_access", time.time() - 120)
 
     sweep_idle(reg, idle_seconds=60)
 
-    assert reg.get(1, 2) is None
+    assert reg.get("m:1", 2) is None
     _assert_process_killed(proc)  # процесс убит
     assert not Path(work_dir).exists()  # папка удалена
 
@@ -50,8 +50,8 @@ def test_sweep_idle_kills_old_streams_and_unregisters():
 def test_sweep_idle_skips_active_streams(tmp_path):
     reg = StreamRegistry()
     proc = MagicMock(); proc.poll.return_value = None
-    handle = StreamHandle(media_id=1, user_id=2, work_dir=str(tmp_path), process=proc)
+    handle = StreamHandle(target_id="m:1", user_id=2, work_dir=str(tmp_path), process=proc)
     reg.register(handle)
     sweep_idle(reg, idle_seconds=60)
-    assert reg.get(1, 2) is handle
+    assert reg.get("m:1", 2) is handle
     _assert_process_not_killed(proc)

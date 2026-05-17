@@ -20,7 +20,7 @@ def sweep_idle(reg: StreamRegistry, idle_seconds: float) -> int:
                 kill(handle.process)
             shutil.rmtree(handle.work_dir, ignore_errors=True)
         finally:
-            reg.unregister(handle.media_id, handle.user_id)
+            reg.unregister(handle.target_id, handle.user_id)
             killed += 1
     if killed:
         log.info("watchdog: killed %d idle stream(s)", killed)

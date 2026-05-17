@@ -33,7 +33,7 @@ def _clear_registry():
         if h.process is not None:
             from app.streaming.ffmpeg_runner import kill
             kill(h.process)
-        reg.unregister(h.media_id, h.user_id)
+        reg.unregister(h.target_id, h.user_id)
 
 
 def _create_media(db_factory, sample: Path) -> int:
@@ -163,7 +163,7 @@ def test_progress_endpoint_touches_stream_registry(client, db_factory, csrf_for)
     assert r.status_code == 200
 
     reg = get_registry()
-    handle = next((h for h in reg.all_streams() if h.media_id == mid), None)
+    handle = next((h for h in reg.all_streams() if h.target_id == f"m:{mid}"), None)
     assert handle is not None
     old_access = handle.last_access
 
@@ -175,5 +175,5 @@ def test_progress_endpoint_touches_stream_registry(client, db_factory, csrf_for)
     )
     assert r.status_code == 204
 
-    handle2 = next((h for h in reg.all_streams() if h.media_id == mid), None)
+    handle2 = next((h for h in reg.all_streams() if h.target_id == f"m:{mid}"), None)
     assert handle2.last_access > old_access

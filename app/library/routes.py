@@ -155,12 +155,18 @@ def delete_media(
     if item is None:
         raise HTTPException(status_code=404)
 
-    # 1. Убить все ffmpeg-процессы для этого media_id (любого юзера)
+    # 1. Убить все ffmpeg-процессы: фильм → "m:N"; сериал → "m:N" + все "e:{ep.id}"
+    from app.streaming.stream_registry import episode_key, media_key
+    target_ids_to_kill = {media_key(media_id)}
+    if item.kind == "series":
+        for ep in item.episodes:
+            target_ids_to_kill.add(episode_key(ep.id))
+
     reg = get_registry()
     for handle in list(reg.all_streams()):
-        if handle.media_id == media_id and handle.process is not None:
+        if handle.target_id in target_ids_to_kill and handle.process is not None:
             kill_ffmpeg(handle.process)
-            reg.unregister(handle.media_id, handle.user_id)
+            reg.unregister(handle.target_id, handle.user_id)
             shutil.rmtree(handle.work_dir, ignore_errors=True)
 
     # 2. Сказать qBittorrent удалить торрент с файлами
