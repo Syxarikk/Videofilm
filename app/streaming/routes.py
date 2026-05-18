@@ -23,6 +23,10 @@ api_router = APIRouter(prefix="/api/stream")
 progress_router = APIRouter(prefix="/api")
 
 
+_VARIANT_RE = re.compile(r"^v\d+$")
+_SEGMENT_NAME_RE = re.compile(r"^seg_\d{5}\.ts$")
+
+
 def _audio_tracks_from_json(audio_tracks: list | None):
     from app.metadata.types import AudioTrack
     if not audio_tracks:
@@ -66,7 +70,6 @@ def _ensure_stream_for(target_id: str, source_path: str,
 
 
 def _serve_master(handle: StreamHandle) -> Response:
-    """Отдаёт master.m3u8 если есть, иначе v0/playlist.m3u8 (одно-вариантный режим)."""
     master = Path(handle.work_dir) / "master.m3u8"
     v0_playlist = Path(handle.work_dir) / "v0" / "playlist.m3u8"
     deadline = _t.time() + 5.0
@@ -82,11 +85,73 @@ def _serve_master(handle: StreamHandle) -> Response:
     )
 
 
-_VARIANT_RE = re.compile(r"^v\d+$")
-_SEGMENT_NAME_RE = re.compile(r"^seg_\d{5}\.ts$")
+# === Episode streaming routes — РЕГИСТРИРУЕМ ПЕРВЫМИ (иначе /{media_id} ловит "episode") ===
+
+@api_router.get("/episode/{episode_id}/master.m3u8")
+def episode_stream_master(
+    episode_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    ep = db.get(Episode, episode_id)
+    if ep is None:
+        raise HTTPException(status_code=404)
+    handle = _ensure_stream_for(
+        target_id=episode_key(ep.id),
+        source_path=ep.file_path,
+        audio_tracks_json=ep.audio_tracks,
+        user_id=user.id,
+    )
+    return _serve_master(handle)
 
 
-# === Movie streaming ===
+@api_router.get("/episode/{episode_id}/{variant}/playlist.m3u8")
+def episode_stream_variant_playlist(
+    episode_id: int, variant: str,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    if not _VARIANT_RE.match(variant):
+        raise HTTPException(status_code=404)
+    reg = get_registry()
+    target_id = episode_key(episode_id)
+    handle = reg.get(target_id, user.id)
+    if handle is None:
+        raise HTTPException(status_code=410, detail="стрим уже завершён, обновите страницу")
+    playlist = Path(handle.work_dir) / variant / "playlist.m3u8"
+    if not playlist.exists():
+        raise HTTPException(status_code=404)
+    reg.touch(target_id, user.id)
+    return Response(
+        content=playlist.read_bytes(),
+        media_type="application/vnd.apple.mpegurl",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@api_router.get("/episode/{episode_id}/{variant}/{segment_name}")
+def episode_stream_segment(
+    episode_id: int, variant: str, segment_name: str,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    if not _VARIANT_RE.match(variant) or not _SEGMENT_NAME_RE.match(segment_name):
+        raise HTTPException(status_code=404)
+    reg = get_registry()
+    target_id = episode_key(episode_id)
+    handle = reg.get(target_id, user.id)
+    if handle is None:
+        raise HTTPException(status_code=410, detail="стрим уже завершён, обновите страницу")
+    seg_path = Path(handle.work_dir) / variant / segment_name
+    if not seg_path.exists():
+        raise HTTPException(status_code=404)
+    reg.touch(target_id, user.id)
+    return FileResponse(
+        str(seg_path),
+        media_type="video/mp2t",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+# === Movie streaming routes ===
 
 @api_router.get("/{media_id}/master.m3u8")
 def stream_master(
@@ -146,73 +211,6 @@ def stream_segment(
         raise HTTPException(status_code=404)
     reg = get_registry()
     target_id = media_key(media_id)
-    handle = reg.get(target_id, user.id)
-    if handle is None:
-        raise HTTPException(status_code=410, detail="стрим уже завершён, обновите страницу")
-    seg_path = Path(handle.work_dir) / variant / segment_name
-    if not seg_path.exists():
-        raise HTTPException(status_code=404)
-    reg.touch(target_id, user.id)
-    return FileResponse(
-        str(seg_path),
-        media_type="video/mp2t",
-        headers={"Cache-Control": "no-store"},
-    )
-
-
-# === Episode streaming ===
-
-@api_router.get("/episode/{episode_id}/master.m3u8")
-def episode_stream_master(
-    episode_id: int,
-    user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
-):
-    ep = db.get(Episode, episode_id)
-    if ep is None:
-        raise HTTPException(status_code=404)
-    handle = _ensure_stream_for(
-        target_id=episode_key(ep.id),
-        source_path=ep.file_path,
-        audio_tracks_json=ep.audio_tracks,
-        user_id=user.id,
-    )
-    return _serve_master(handle)
-
-
-@api_router.get("/episode/{episode_id}/{variant}/playlist.m3u8")
-def episode_stream_variant_playlist(
-    episode_id: int, variant: str,
-    user: Annotated[User, Depends(get_current_user)],
-):
-    if not _VARIANT_RE.match(variant):
-        raise HTTPException(status_code=404)
-    reg = get_registry()
-    target_id = episode_key(episode_id)
-    handle = reg.get(target_id, user.id)
-    if handle is None:
-        raise HTTPException(status_code=410,
-                              detail="стрим уже завершён, обновите страницу")
-    playlist = Path(handle.work_dir) / variant / "playlist.m3u8"
-    if not playlist.exists():
-        raise HTTPException(status_code=404)
-    reg.touch(target_id, user.id)
-    return Response(
-        content=playlist.read_bytes(),
-        media_type="application/vnd.apple.mpegurl",
-        headers={"Cache-Control": "no-store"},
-    )
-
-
-@api_router.get("/episode/{episode_id}/{variant}/{segment_name}")
-def episode_stream_segment(
-    episode_id: int, variant: str, segment_name: str,
-    user: Annotated[User, Depends(get_current_user)],
-):
-    if not _VARIANT_RE.match(variant) or not _SEGMENT_NAME_RE.match(segment_name):
-        raise HTTPException(status_code=404)
-    reg = get_registry()
-    target_id = episode_key(episode_id)
     handle = reg.get(target_id, user.id)
     if handle is None:
         raise HTTPException(status_code=410, detail="стрим уже завершён, обновите страницу")

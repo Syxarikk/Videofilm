@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}{{ series.title }} — S{{ '%02d'|format(episode.season) }}E{{ '%02d'|format(episode.episode) }}{% endblock %}
+{% block content %}
+<section class="episode-page-header">
+  <p class="eyebrow">
+    <a href="/media/{{ series.id }}?season={{ episode.season }}">{{ series.title }}</a>
+    · Сезон {{ episode.season }} · Эпизод {{ episode.episode }}
+  </p>
+  <h1>{{ episode.title or ('Эпизод ' ~ episode.episode) }}</h1>
+  {% if episode.description %}<p class="episode-description">{{ episode.description }}</p>{% endif %}
+</section>
+
+{% if saved_position_seconds and saved_position_seconds > 0
+      and (not episode.duration_seconds or saved_position_seconds < 0.65 * episode.duration_seconds) %}
+<section class="resume-banner">
+  <span>⏱ Продолжить с <span id="resume-time"></span></span>
+  <button id="restart-btn" type="button">Сначала</button>
+</section>
+<script>
+(function () {
+  const sec = {{ saved_position_seconds }};
+  const m = Math.floor(sec / 60), s = sec % 60;
+  document.getElementById('resume-time').textContent = `${m}:${String(s).padStart(2,'0')}`;
+})();
+</script>
+{% endif %}
+
+<section class="player-shell">
+  <video id="player" controls preload="metadata"></video>
+  <div id="audio-tracks" class="audio-tracks"></div>
+</section>
+
+<section class="episode-nav">
+  {% if prev_ep %}
+    <a href="/media/{{ series.id }}/s{{ prev_ep.season }}/e{{ prev_ep.episode }}"
+       class="button secondary compact">
+      ← S{{ '%02d'|format(prev_ep.season) }}E{{ '%02d'|format(prev_ep.episode) }}
+    </a>
+  {% else %}
+    <button class="button secondary compact" disabled>← Предыдущий</button>
+  {% endif %}
+  <a href="/media/{{ series.id }}?season={{ episode.season }}" class="button ghost compact">
+    Все эпизоды сезона
+  </a>
+  {% if next_ep %}
+    <a href="/media/{{ series.id }}/s{{ next_ep.season }}/e{{ next_ep.episode }}"
+       class="button secondary compact" id="next-episode-link">
+      S{{ '%02d'|format(next_ep.season) }}E{{ '%02d'|format(next_ep.episode) }} →
+    </a>
+  {% else %}
+    <button class="button secondary compact" disabled>Следующий →</button>
+  {% endif %}
+</section>
+
+<section class="action-bar">
+  <a href="/media/{{ series.id }}" class="button ghost">К сериалу</a>
+</section>
+
+<div id="autoplay-overlay" hidden></div>
+
+<script src="/static/hls.min.js"></script>
+<script>
+(function() {
+  const EPISODE_ID = {{ episode.id }};
+  const SAVED_POSITION = {{ saved_position_seconds or 0 }};
+  const SAVED_AUDIO = {{ saved_audio_track_index|tojson }};
+  {% if next_ep %}
+  const NEXT_URL = {{ ("/media/" ~ series.id ~ "/s" ~ next_ep.season ~ "/e" ~ next_ep.episode)|tojson }};
+  const NEXT_TITLE = {{ ("S" ~ ("%02d"|format(next_ep.season)) ~ "E" ~ ("%02d"|format(next_ep.episode)) ~ " — " ~ (next_ep.title or ("Эпизод " ~ next_ep.episode)))|tojson }};
+  {% else %}
+  const NEXT_URL = null;
+  const NEXT_TITLE = null;
+  {% endif %}
+  const video = document.getElementById('player');
+  const src = '/api/stream/episode/' + EPISODE_ID + '/master.m3u8';
+
+  let hls = null;
+  let recoverAttempts = 0;
+  let overlayShown = false;
+  let overlayCancelled = false;
+  let autoplayTimer = null;
+
+  if (Hls.isSupported()) {
+    hls = new Hls();
+    hls.loadSource(src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      if (hls.audioTracks && hls.audioTracks.length > 1) {
+        renderAudioSelector(hls);
+      }
+      if (SAVED_AUDIO != null && hls.audioTracks && SAVED_AUDIO < hls.audioTracks.length) {
+        hls.audioTrack = SAVED_AUDIO;
+      }
+    });
+    hls.on(Hls.Events.ERROR, (e, data) => {
+      console.error("HLS error:", data);
+      if (!data.fatal) return;
+      if (recoverAttempts < 1) {
+        recoverAttempts++;
+        setTimeout(() => { try { hls.startLoad(); } catch (err) { console.warn(err); } }, 1000);
+        setTimeout(() => { recoverAttempts = 0; }, 30000);
+        return;
+      }
+      const banner = document.createElement('p');
+      banner.className = 'error';
+      banner.textContent = 'Поток упал. Обновите страницу.';
+      document.querySelector('main').appendChild(banner);
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = src;
+  } else {
+    document.querySelector('main').innerHTML += '<p class="error">Браузер не поддерживает HLS. Скачайте оригинал.</p>';
+  }
+
+  video.addEventListener('loadedmetadata', () => {
+    if (SAVED_POSITION > 0 && SAVED_POSITION < video.duration - 30) {
+      video.currentTime = SAVED_POSITION;
+    }
+  });
+
+  const restartBtn = document.getElementById('restart-btn');
+  if (restartBtn) {
+    restartBtn.addEventListener('click', () => {
+      video.currentTime = 0;
+      fetch('/api/progress/episode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({episode_id: EPISODE_ID, position_seconds: 0}),
+      }).catch(() => {});
+    });
+  }
+
+  setInterval(() => {
+    if (video.ended || isNaN(video.currentTime)) return;
+    const payload = {episode_id: EPISODE_ID, position_seconds: Math.floor(video.currentTime)};
+    if (hls && hls.audioTrack >= 0) payload.audio_track_index = hls.audioTrack;
+    fetch('/api/progress/episode', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  }, 15000);
+
+  video.addEventListener('timeupdate', () => {
+    if (!NEXT_URL || overlayCancelled || overlayShown) return;
+    if (isNaN(video.duration)) return;
+    const remaining = video.duration - video.currentTime;
+    if (remaining < 15 && remaining > 5) {
+      showAutoplayOverlay();
+    }
+  });
+
+  function showAutoplayOverlay() {
+    overlayShown = true;
+    const ov = document.getElementById('autoplay-overlay');
+    ov.hidden = false;
+    let countdown = 10;
+    ov.innerHTML = `
+      <div class="autoplay-card">
+        <p class="autoplay-title">Следующий: <strong>${escapeHtml(NEXT_TITLE)}</strong></p>
+        <p class="autoplay-counter">через <span id="autoplay-secs">${countdown}</span>с</p>
+        <div class="autoplay-actions">
+          <button id="autoplay-cancel" class="button ghost compact">Отмена</button>
+          <button id="autoplay-now" class="button primary compact">Сразу →</button>
+        </div>
+      </div>
+    `;
+    autoplayTimer = setInterval(() => {
+      countdown--;
+      const sx = document.getElementById('autoplay-secs');
+      if (sx) sx.textContent = countdown;
+      if (countdown <= 0) {
+        clearInterval(autoplayTimer);
+        window.location = NEXT_URL;
+      }
+    }, 1000);
+    document.getElementById('autoplay-cancel').addEventListener('click', () => {
+      clearInterval(autoplayTimer);
+      ov.hidden = true;
+      overlayCancelled = true;
+    });
+    document.getElementById('autoplay-now').addEventListener('click', () => {
+      clearInterval(autoplayTimer);
+      window.location = NEXT_URL;
+    });
+  }
+
+  function renderAudioSelector(hlsInst) {
+    const c = document.getElementById('audio-tracks');
+    if (!c) return;
+    c.innerHTML = '<span class="audio-label">🎧 Озвучка:</span>' + hlsInst.audioTracks.map(t =>
+      `<button data-track="${t.id}" class="audio-track${t.id === hlsInst.audioTrack ? ' active' : ''}" type="button">`
+      + escapeHtml((t.name || 'Track ' + (t.id + 1)).replace(/_/g, ' '))
+      + (t.lang && t.lang !== 'und' ? ` <span class="lang">${escapeHtml(t.lang)}</span>` : '')
+      + '</button>'
+    ).join('');
+    c.onclick = e => {
+      const btn = e.target.closest('[data-track]');
+      if (!btn) return;
+      const id = parseInt(btn.dataset.track, 10);
+      hlsInst.audioTrack = id;
+      c.querySelectorAll('.audio-track').forEach(b => b.classList.toggle('active', b === btn));
+      fetch('/api/progress/episode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          episode_id: EPISODE_ID,
+          position_seconds: Math.floor(video.currentTime || 0),
+          audio_track_index: id,
+        }),
+      }).catch(() => {});
+    };
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[ch]));
+  }
+})();
+</script>
+{% endblock %}

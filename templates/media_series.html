@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block content %}
+<section class="media-header">
+  <div class="media-header-poster">
+    {% if item.poster_url %}
+      <img src="{{ item.poster_url }}" alt="">
+    {% else %}
+      <div class="poster-placeholder">{{ item.title[:2] | upper }}</div>
+    {% endif %}
+  </div>
+  <div class="media-header-body">
+    <p class="eyebrow">
+      Сериал
+      {% if item.year %} · {{ item.year }}{% endif %}
+      {% if item.genres %} · {{ item.genres | map(attribute='name') | join(', ') }}{% endif %}
+    </p>
+    <h1>{{ item.title }}</h1>
+    {% if item.description %}<p class="media-description">{{ item.description }}</p>{% endif %}
+    <div class="media-header-actions">
+      {% if item.match_source %}
+        <span class="media-source-badge">Источник: {{ item.match_source | upper }}</span>
+      {% endif %}
+      <button class="button ghost compact" type="button"
+              hx-get="/api/media/{{ item.id }}/match/search-form"
+              hx-target="#modal-root" hx-swap="innerHTML">Исправить совпадение</button>
+      <button class="button ghost compact" type="button"
+              hx-get="/api/media/{{ item.id }}/edit-form"
+              hx-target="#modal-root" hx-swap="innerHTML">Редактировать</button>
+    </div>
+  </div>
+</section>
+
+<div id="modal-root"></div>
+
+<section class="season-tabs">
+  {% for s in seasons %}
+    <a href="/media/{{ item.id }}?season={{ s }}"
+       class="season-tab {% if s == selected_season %}active{% endif %}">
+      Сезон {{ s }}
+    </a>
+  {% endfor %}
+</section>
+
+<section class="episode-grid">
+  {% for entry in episodes %}
+    {% set e = entry.ep %}
+    <a class="episode-card" href="/media/{{ item.id }}/s{{ e.season }}/e{{ e.episode }}">
+      <div class="episode-number">S{{ '%02d'|format(e.season) }}E{{ '%02d'|format(e.episode) }}</div>
+      <div class="episode-title">{{ e.title or ('Эпизод ' ~ e.episode) }}</div>
+      <div class="episode-meta">
+        {% if e.duration_seconds %}
+          {% set total_min = (e.duration_seconds / 60) | int %}
+          {% if total_min >= 60 %}{{ total_min // 60 }}ч {{ total_min % 60 }}мин{% else %}{{ total_min }}мин{% endif %}
+        {% endif %}
+        {% if entry.status == 'watched' %}<span class="episode-watched">✓</span>{% endif %}
+      </div>
+      {% if entry.status == 'in_progress' and e.duration_seconds %}
+        {% set pct = (entry.position / e.duration_seconds * 100) | round(0) %}
+        <div class="episode-progress"><div style="width: {{ pct }}%"></div></div>
+      {% endif %}
+    </a>
+  {% endfor %}
+</section>
+
+<section class="action-bar">
+  <a href="/library" class="button secondary">Библиотека</a>
+  <form method="post" action="/api/media/{{ item.id }}/delete" onsubmit="return confirm('Удалить весь сериал «{{ item.title }}»?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="button danger" type="submit">Удалить</button>
+  </form>
+</section>
+{% endblock %}

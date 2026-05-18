@@ -35,7 +35,11 @@
         <h3><a href="/media/{{ it.id }}">{{ it.title }}</a></h3>
         <p class="media-card-meta">
           {% if it.year %}{{ it.year }}{% endif %}
-          {% if it.duration_seconds %}
+          {% if it.kind == 'series' and it.episodes %}
+            {% set season_set = it.episodes | map(attribute='season') | unique | list %}
+            {% if it.year %} · {% endif %}
+            {{ season_set | length }}С · {{ it.episodes | length }}Э
+          {% elif it.duration_seconds %}
             {% if it.year %} · {% endif %}
             {% set total_min = (it.duration_seconds / 60) | int %}
             {% if total_min >= 60 %}{{ (total_min // 60) }}ч {{ (total_min % 60) }}мин

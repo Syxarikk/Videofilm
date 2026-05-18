@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth.deps import get_current_user
 from app.csrf import verify_csrf
 from app.deps import get_db, get_kinopoisk_client, get_qbittorrent_client, get_tmdb_client, render
-from app.models import Genre, MediaItem, User, WatchProgress
+from app.models import Episode, EpisodeWatchProgress, Genre, MediaItem, User, WatchProgress
 from app.streaming.ffmpeg_runner import kill as kill_ffmpeg
 from app.streaming.stream_registry import get_registry
 from app.torrents.client import QBittorrentClient, QBittorrentError
@@ -101,12 +101,17 @@ def media_page(
     request: Request,
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    season: int = 1,
 ):
     item = db.get(MediaItem, media_id)
     if item is None:
         raise HTTPException(status_code=404)
+    if item.kind == "series":
+        return _series_page(request, user, db, item, season)
+    return _movie_page(request, user, db, item)
 
-    # Лениво дозаполняем duration_seconds и audio_tracks для старых записей.
+
+def _movie_page(request, user, db, item):
     needs_commit = False
     if item.duration_seconds is None:
         from app.metadata.ffprobe import get_duration_seconds
@@ -129,7 +134,7 @@ def media_page(
     progress = db.scalars(
         select(WatchProgress).where(
             WatchProgress.user_id == user.id,
-            WatchProgress.media_id == media_id,
+            WatchProgress.media_id == item.id,
         )
     ).first()
     saved_position = progress.position_seconds if progress else 0
@@ -138,6 +143,118 @@ def media_page(
     return render(request, "media.html", {
         "user": user,
         "item": item,
+        "saved_position_seconds": saved_position,
+        "saved_audio_track_index": saved_audio_track,
+    })
+
+
+def _series_page(request, user, db, item, season):
+    episodes = list(item.episodes)  # relationship уже отсортирован по (season, episode)
+    seasons = sorted({e.season for e in episodes}) or [1]
+    selected_season = season if season in seasons else seasons[0]
+    season_episodes = [e for e in episodes if e.season == selected_season]
+
+    user_progresses = {
+        p.episode_id: p
+        for p in db.scalars(
+            select(EpisodeWatchProgress).where(EpisodeWatchProgress.user_id == user.id)
+        )
+    }
+
+    annotated_episodes = []
+    for e in season_episodes:
+        p = user_progresses.get(e.id)
+        if p is None or p.position_seconds <= 0:
+            st = "not_started"
+        elif e.duration_seconds and p.position_seconds >= WATCHED_RATIO * e.duration_seconds:
+            st = "watched"
+        else:
+            st = "in_progress"
+        annotated_episodes.append({
+            "ep": e, "status": st,
+            "position": p.position_seconds if p else 0,
+        })
+
+    return render(request, "media_series.html", {
+        "user": user, "item": item,
+        "seasons": seasons,
+        "selected_season": selected_season,
+        "episodes": annotated_episodes,
+    })
+
+
+def _find_adjacent_episode(db, series_id: int, season: int, episode: int, direction: str):
+    """direction: 'prev' or 'next'. Returns Episode or None."""
+    if direction == "next":
+        return db.scalars(
+            select(Episode).where(
+                Episode.series_id == series_id,
+                ((Episode.season > season) |
+                 ((Episode.season == season) & (Episode.episode > episode)))
+            ).order_by(Episode.season.asc(), Episode.episode.asc()).limit(1)
+        ).first()
+    return db.scalars(
+        select(Episode).where(
+            Episode.series_id == series_id,
+            ((Episode.season < season) |
+             ((Episode.season == season) & (Episode.episode < episode)))
+        ).order_by(Episode.season.desc(), Episode.episode.desc()).limit(1)
+    ).first()
+
+
+@router.get("/media/{series_id}/s{season}/e{episode}", response_class=HTMLResponse)
+def episode_page(
+    series_id: int, season: int, episode: int,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    series = db.get(MediaItem, series_id)
+    if series is None or series.kind != "series":
+        raise HTTPException(status_code=404)
+
+    ep = db.scalars(select(Episode).where(
+        Episode.series_id == series_id,
+        Episode.season == season,
+        Episode.episode == episode,
+    )).first()
+    if ep is None:
+        raise HTTPException(status_code=404)
+
+    needs_commit = False
+    if ep.duration_seconds is None:
+        from app.metadata.ffprobe import get_duration_seconds
+        dur = get_duration_seconds(ep.file_path)
+        if dur is not None:
+            ep.duration_seconds = dur
+            needs_commit = True
+    if ep.audio_tracks is None:
+        from app.metadata.ffprobe import probe_audio_tracks
+        tracks = probe_audio_tracks(ep.file_path)
+        ep.audio_tracks = [
+            {"index": a.index, "codec": a.codec, "language": a.language,
+             "title": a.title, "channels": a.channels}
+            for a in tracks
+        ]
+        needs_commit = True
+    if needs_commit:
+        db.commit()
+
+    progress = db.scalars(
+        select(EpisodeWatchProgress).where(
+            EpisodeWatchProgress.user_id == user.id,
+            EpisodeWatchProgress.episode_id == ep.id,
+        )
+    ).first()
+    saved_position = progress.position_seconds if progress else 0
+    saved_audio_track = progress.audio_track_index if progress else None
+
+    prev_ep = _find_adjacent_episode(db, series_id, season, episode, "prev")
+    next_ep = _find_adjacent_episode(db, series_id, season, episode, "next")
+
+    return render(request, "media_episode.html", {
+        "user": user, "series": series, "episode": ep,
+        "prev_ep": prev_ep, "next_ep": next_ep,
         "saved_position_seconds": saved_position,
         "saved_audio_track_index": saved_audio_track,
     })

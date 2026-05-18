@@ -1031,3 +1031,73 @@ td form {
 .match-result-source {
   font-size: 0.78rem; opacity: 0.6; margin: 4px 0 0;
 }
+
+/* === Series page === */
+.season-tabs {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 16px 0;
+}
+.season-tab {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: inherit;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.15s;
+}
+.season-tab:hover { background: rgba(255, 255, 255, 0.1); }
+.season-tab.active { background: #4084ff; border-color: #4084ff; color: #fff; }
+
+.episode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.episode-card {
+  position: relative;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.episode-card:hover { background: rgba(255, 255, 255, 0.08); }
+.episode-number { font-size: 0.78rem; opacity: 0.6; margin-bottom: 4px; }
+.episode-title { font-weight: 500; margin-bottom: 4px; }
+.episode-meta { font-size: 0.85rem; opacity: 0.7; display: flex; gap: 8px; }
+.episode-watched { color: #22c858; font-weight: bold; }
+.episode-progress {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 3px; background: rgba(0, 0, 0, 0.4);
+}
+.episode-progress > div { height: 100%; background: #4084ff; }
+
+/* === Episode page === */
+.episode-page-header { margin: 24px 0 16px; }
+.episode-page-header .eyebrow a { color: inherit; opacity: 0.7; text-decoration: none; }
+.episode-page-header .eyebrow a:hover { opacity: 1; }
+.episode-description { margin: 12px 0; line-height: 1.5; opacity: 0.85; }
+.episode-nav {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin: 16px 0;
+}
+.autoplay-overlay {
+  position: fixed; bottom: 24px; right: 24px;
+  z-index: 100;
+}
+.autoplay-card {
+  background: #1e2230;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 280px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.autoplay-title { margin: 0 0 4px; font-size: 0.9rem; }
+.autoplay-counter { margin: 0 0 12px; font-size: 0.85rem; opacity: 0.7; }
+.autoplay-actions { display: flex; gap: 8px; justify-content: flex-end; }
